@@ -1,0 +1,66 @@
+import logging
+
+from torch.utils.data import DataLoader
+
+from data.dataset import TrainQueryDataset, collate_fn_negative_sampling, EvalQueryDataset
+
+
+def get_dataloader(conf: dict, split_set: str) -> DataLoader:
+    """
+        Returns the dataloader associated to the configuration in conf
+    """
+
+    match split_set:
+        case 'train':
+            train_dataset = TrainQueryDataset(data_path=conf['dataset_path'])
+
+            train_dataloader = DataLoader(
+                train_dataset,
+                batch_size=conf['train_batch_size'],
+                shuffle=True,
+                num_workers=conf['running_settings']['train_n_workers'],
+                collate_fn=lambda batch: collate_fn_negative_sampling(
+                    batch, train_dataset.query2itemsSet,
+                    train_dataset.n_items,
+                    n_negs=conf['neg_train']
+                ),
+                prefetch_factor=conf['running_settings']['prefetch_factor'] if 'prefetch_factor' in conf[
+                    'running_settings'] else 2
+            )
+
+            logging.info(f"Built Train DataLoader module \n"
+                         f"- batch_size: {conf['train_batch_size']} \n"
+                         f"- train_n_workers: {conf['running_settings']['train_n_workers']} \n")
+            return train_dataloader
+        case 'val':
+
+            val_dataset = EvalQueryDataset(data_path=conf['dataset_path'], split_set='val')
+
+            val_dataloader = DataLoader(
+                val_dataset,
+                batch_size=conf['eval_batch_size'],
+                num_workers=conf['running_settings']['eval_n_workers'],
+                shuffle=False
+            )
+            logging.info(f"Built Val DataLoader module \n"
+                         f"- batch_size: {conf['eval_batch_size']} \n"
+                         f"- eval_n_workers: {conf['running_settings']['eval_n_workers']} \n")
+
+            return val_dataloader
+        case 'test':
+
+            test_dataset = EvalQueryDataset(data_path=conf['dataset_path'], split_set='test')
+
+            test_dataloader = DataLoader(
+                test_dataset,
+                batch_size=conf['eval_batch_size'],
+                num_workers=conf['running_settings']['eval_n_workers'],
+                shuffle=False
+            )
+
+            logging.info(f"Built Test DataLoader module \n"
+                         f"- batch_size: {conf['eval_batch_size']} \n"
+                         f"- eval_n_workers: {conf['running_settings']['eval_n_workers']} \n")
+            return test_dataloader
+        case _:
+            raise ValueError(f"split_set value '{split_set}' is invalid! Please choose from [train, val, test]")
