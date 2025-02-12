@@ -8,9 +8,9 @@ from torch.utils.data import DataLoader, Dataset
 
 """
 File formats:
-    <train/val/test>_split.tsv: query_idx \t user_idx \t [item_idx_0,...,item_idx_n]     -> Header: query_idx, user_idx, item_idxs
-    user_idxs.tsv: user_idx, <dataset_user_id>                                              -> Header: user_idx, <dataset_user_id>
-    item_idxs.tsv: item_idx, <dataset_item_id>                                              -> Header: item_idx, <dataset_item_id>
+    <train/val/test>_split.tsv: query_idx \t text \t user_idx \t [item_idx_0,...,item_idx_n]        -> Header: query_idx, user_idx, item_idxs
+    user_idxs.tsv: user_idx, <dataset_user_id>                                                      -> Header: user_idx, <dataset_user_id>
+    item_idxs.tsv: item_idx, <dataset_item_id>                                                      -> Header: item_idx, <dataset_item_id>
 """
 
 
@@ -58,7 +58,7 @@ class TrainQueryDataset(Dataset):
 
     def __getitem__(self, index):
         entry = self.triplets.iloc[index]
-        return entry['query_idx'], entry['user_idx'], entry['item_idx']
+        return entry['query_idx'], entry['text'], entry['user_idx'], entry['item_idx']
 
 
 class EvalQueryDataset(Dataset):
@@ -138,17 +138,17 @@ class EvalQueryDataset(Dataset):
         items_excluded = self.excludeData.get(entry['query_idx'], np.array([], dtype=np.int32))
         exclude_items_mask[items_excluded] = 1
 
-        return entry['query_idx'], entry['user_idx'], pos_items_mask, exclude_items_mask
+        return entry['query_idx'], entry['text'], entry['user_idx'], pos_items_mask, exclude_items_mask
 
 
-def collate_fn_negative_sampling(batch, query2itemsSet, n_items, n_negs=10):
+def collate_fn_negative_sampling(batch: tuple, query2itemsSet: dict, n_items: int, n_negs=10):
     """
-    Collate function for negative sampling
-    :param batch: list of tuples (query_idx, user_idx, item_idx)
+    Collate function for negative sampling. Performs uniform sampling of negative items.
+    :param batch: list of tuples (query_idx, text, user_idx, item_idx)
     :param query2itemsSet: dictionary query_idx -> set(item_idxs)
     :param n_items: number of items
     :param n_negs: number of negative samples
-    :return: query_idx, user_idx, item_idx, neg_idxs
+    :return: query_idx, text, user_idx, item_idx, neg_idxs
     """
     batch_size = len(batch)
     neg_idxs = np.empty((batch_size, n_negs), dtype=np.int64)
@@ -158,7 +158,7 @@ def collate_fn_negative_sampling(batch, query2itemsSet, n_items, n_negs=10):
         sampled = np.random.randint(0, high=n_items, size=mask.sum())
         neg_idxs[mask] = sampled
 
-        for i, (query_idx, _, _) in enumerate(batch):
+        for i, (query_idx, _, _, _) in enumerate(batch):
             pos_items = query2itemsSet[query_idx]
             for j in range(n_negs):
                 if neg_idxs[i, j] not in pos_items:

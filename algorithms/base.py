@@ -18,11 +18,12 @@ class BaseQueryMatchingModel(ABC, nn.Module):
         super().__init__()
 
     @abstractmethod
-    def forward(self, q_idxs: torch.Tensor, u_idxs: torch.Tensor, i_idxs: torch.Tensor) -> torch.Tensor:
+    def forward(self, q_idxs: torch.Tensor, q_text: tuple, u_idxs: torch.Tensor, i_idxs: torch.Tensor) -> torch.Tensor:
         """
         Predicts the affinity scores between (u,q) and i.
 
         :param q_idxs:  Query indexes. Shape is (batch_size,)
+        :param q_text:  Query text. Shape is (batch_size,). Tuple of strings.
         :param u_idxs:  User indexes. Shape is (batch_size,)
         :param i_idxs: Item indexes. Shape is (batch_size,)
         :return:
@@ -30,11 +31,12 @@ class BaseQueryMatchingModel(ABC, nn.Module):
         """
 
     @abstractmethod
-    def predict_all(self, q_idxs: torch.Tensor, u_idxs: torch.Tensor) -> torch.Tensor:
+    def predict_all(self, q_idxs: torch.Tensor, q_text: tuple, u_idxs: torch.Tensor) -> torch.Tensor:
         """
         Predicts the affinity scores between (u,q) and all items.
 
         :param q_idxs:  Query indexes. Shape is (batch_size,)
+        :param q_text:  Query text. Shape is (batch_size,). Tuple of strings.
         :param u_idxs:  User indexes. Shape is (batch_size,)
         :return:
             preds: Predicted scores. Shape is (batch_size, n_items)
@@ -49,7 +51,7 @@ class BaseQueryMatchingModel(ABC, nn.Module):
         :param pos_preds: Positive predictions. Shape is (batch_size,)
         :param neg_preds: Negative predictions. Shape is (batch_size, n_neg) where n_neg is the number of negative samples
         :return:
-            losses: Dictionary with the loss values.
+            losses: Dictionary with the loss values. IT MUST HAVE AN ENTITY 'loss'
         """
 
     def save_model_to_path(self, path: str):

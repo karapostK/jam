@@ -1,4 +1,3 @@
-import pandas as pd
 import torch
 from datasets import Dataset
 from sentence_transformers import SentenceTransformer
@@ -27,8 +26,7 @@ class BaselineQueryMatching(BaseQueryMatchingModel):
 
     """
 
-    def __init__(self, n_users: int, n_items: int, d: int, user_features: dict, item_features: dict,
-                 queries: pd.DataFrame):
+    def __init__(self, n_users: int, n_items: int, d: int, user_features: dict, item_features: dict):
         self.n_users = n_users
         self.n_items = n_items
         self.d = d
@@ -37,7 +35,6 @@ class BaselineQueryMatching(BaseQueryMatchingModel):
         self.user_embed = torch.nn.Embedding.from_pretrained(torch.FloatTensor(user_embed), freeze=True)
         self.user_encoder = torch.nn.Linear(user_embed.shape[1], d)
 
-        self.queries = queries
         self.sentence_model = SentenceTransformer('sentence-transformers/sentence-t5-l')
         self.query_encoder = torch.nn.Linear(768, d)  # SentenceT5 output
 
@@ -58,11 +55,10 @@ class BaselineQueryMatching(BaseQueryMatchingModel):
 
         super().__init__()
 
-    def forward(self, q_idxs: torch.Tensor, u_idxs: torch.Tensor, i_idxs: torch.Tensor) -> torch.Tensor:
+    def forward(self, q_idxs: torch.Tensor, q_text: tuple, u_idxs: torch.Tensor, i_idxs: torch.Tensor) -> torch.Tensor:
 
         # Encode the queries
-        q_text = self.queries['text'][q_idxs]
-        q_sentence = self.sentence_model.encode(sentences=q_text, convert_to_tensor=True)
+        q_sentence = self.sentence_model.encode(sentences=q_text, convert_to_tensor=True)  # todo: does it work?
         q_embed = self.query_encoder(q_sentence)
 
         # Encode the users
@@ -78,10 +74,11 @@ class BaselineQueryMatching(BaseQueryMatchingModel):
         preds = torch.sum(q_embed * u_embed * i_embed, dim=1)
         return preds
 
-    def predict_all(self, q_idxs: torch.Tensor, u_idxs: torch.Tensor) -> torch.Tensor:
+    def predict_all(self, q_idxs: torch.Tensor, q_text: tuple, u_idxs: torch.Tensor) -> torch.Tensor:
 
-        i_idxs = torch.arange(self.n_items).unsqueeze(0).repeat(q_idxs.shape[0], 1)
-        return self.forward(q_idxs, u_idxs, i_idxs)
+        batch_size = q_idxs.shape[0]
+        i_idxs = torch.arange(self.n_items).unsqueeze(0).repeat(batch_size, 1)  # todo: not sure about repeat 1... why?
+        return self.forward(q_idxs, q_text, u_idxs, i_idxs)
 
     def compute_loss(self, pos_preds: torch.Tensor, neg_preds: torch.Tensor) -> dict:
 
@@ -98,5 +95,4 @@ class BaselineQueryMatching(BaseQueryMatchingModel):
             d=conf['d'],
             user_features=feature_holder.user_features,
             item_features=feature_holder.item_features,
-            queries=feature_holder.queries
         )

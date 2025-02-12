@@ -8,11 +8,10 @@ import pandas as pd
 
 class FeatureHolder:
     """
-    Looks at the folder and load all .npy files as users/items features and the query text.
+    Looks at the folder and load all .npy files as users/items features.
 
     File formats:
         <user/item>_<modality>_features.npy             where modality can be text, image, audio, cf etc.
-        queries.tsv                                     query_idx \t query_text
     """
 
     def __init__(self, data_path: str):
@@ -20,7 +19,6 @@ class FeatureHolder:
 
         self.user_features = None
         self.item_features = None
-        self.queries = None
 
         self.n_user_features = None
         self.n_item_features = None
@@ -51,9 +49,6 @@ class FeatureHolder:
             self.item_features[modality] = np.load(file, allow_pickle=True)
         self.n_item_features = len(self.item_features)
 
-        # Loading the queries
-        self.queries = pd.read_csv(os.path.join(self.data_path, 'queries.tsv'), sep='\t')
-
         logging.info('Finished loading data')
 
 
@@ -65,4 +60,3 @@ if __name__ == '__main__':
     print(fh.item_features)
     print(fh.n_user_features)
     print(fh.n_item_features)
-    print(fh.queries.iloc[0:10]['text'])

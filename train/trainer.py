@@ -101,14 +101,14 @@ class Trainer:
 
             iterator = tqdm(self.train_loader) if self.batch_verbose else self.train_loader
 
-            for q_idxs, u_idxs, i_idxs, neg_i_idxs in iterator:
+            for q_idxs, q_text, u_idxs, i_idxs, neg_i_idxs in iterator:
                 q_idxs = q_idxs.to(self.device)
                 u_idxs = u_idxs.to(self.device)
                 i_idxs = i_idxs.to(self.device)
                 neg_i_idxs = neg_i_idxs.to(self.device)
 
-                pos_preds = self.model(q_idxs, u_idxs, i_idxs)
-                neg_preds = self.model(q_idxs, u_idxs, neg_i_idxs)
+                pos_preds = self.model(q_idxs, q_text, u_idxs, i_idxs)
+                neg_preds = self.model(q_idxs, q_text, u_idxs, neg_i_idxs)
 
                 # todo: make sure there is a single entry ('loss') in the dict
                 losses = self.model.compute_loss(pos_preds, neg_preds)

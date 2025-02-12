@@ -99,13 +99,13 @@ def evaluate_algorithm(model: BaseQueryMatchingModel, eval_loader: DataLoader, d
     evaluator = Evaluator(aggregate_results=True)
     iterator = tqdm(eval_loader) if verbose else eval_loader
 
-    for q_idxs, u_idxs, pos_i_masks, exclude_i_masks in iterator:
+    for q_idxs, q_text, u_idxs, pos_i_masks, exclude_i_masks in iterator:
         q_idxs = q_idxs.to(device)
         u_idxs = u_idxs.to(device)
         pos_i_masks = pos_i_masks.to(device)
         exclude_i_masks = exclude_i_masks.to(device)
 
-        preds = model.predict_all(q_idxs, u_idxs)
+        preds = model.predict_all(q_idxs, q_text, u_idxs)
         preds[exclude_i_masks] = -torch.inf
 
         evaluator.eval_batch(preds, pos_i_masks)
