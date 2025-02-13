@@ -3,7 +3,6 @@ import logging
 import os
 
 import numpy as np
-import pandas as pd
 
 
 class FeatureHolder:
@@ -52,10 +51,8 @@ class FeatureHolder:
         logging.info('Finished loading data')
 
 
-
-
 if __name__ == '__main__':
-    fh = FeatureHolder('./amazon23')
+    fh = FeatureHolder('./amazon23office/processed')
     print(fh.user_features)
     print(fh.item_features)
     print(fh.n_user_features)

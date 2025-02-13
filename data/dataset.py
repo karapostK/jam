@@ -171,7 +171,7 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
     logging.info('Starting')
 
-    data_path = '/home/alessandro/PycharmProjects/jam/data/amazon23'
+    data_path = './amazon23office/processed'
 
     # Train
     trainDataset = TrainQueryDataset(data_path)

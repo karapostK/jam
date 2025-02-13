@@ -7,7 +7,7 @@ from constants.enums import AlgorithmsEnum, DatasetsEnum
 from constants.wandb_constants import PROJECT_NAME, ENTITY_NAME
 from data.dataloader import get_dataloader
 from data.feature import FeatureHolder
-from eval.eval import evaluate_algorithm
+from evaluation.eval import evaluate_algorithm
 from train.trainer import Trainer
 from utilities.utils import reproducible
 

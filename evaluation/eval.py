@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from algorithms.base import BaseQueryMatchingModel
-from eval.metrics import precision_at_k_batch, ndcg_at_k_batch, recall_at_k_batch
+from evaluation.metrics import precision_at_k_batch, ndcg_at_k_batch, recall_at_k_batch
 
 
 class Evaluator:

@@ -14,7 +14,7 @@ def get_dataloader(conf: dict, split_set: str) -> DataLoader:
         case 'train':
             train_dataset = TrainQueryDataset(data_path=conf['dataset_path'])
 
-            train_dataloader = DataLoader(
+            dataloader = DataLoader(
                 train_dataset,
                 batch_size=conf['train_batch_size'],
                 shuffle=True,
@@ -31,12 +31,11 @@ def get_dataloader(conf: dict, split_set: str) -> DataLoader:
             logging.info(f"Built Train DataLoader module \n"
                          f"- batch_size: {conf['train_batch_size']} \n"
                          f"- train_n_workers: {conf['running_settings']['train_n_workers']} \n")
-            return train_dataloader
         case 'val':
 
             val_dataset = EvalQueryDataset(data_path=conf['dataset_path'], split_set='val')
 
-            val_dataloader = DataLoader(
+            dataloader = DataLoader(
                 val_dataset,
                 batch_size=conf['eval_batch_size'],
                 num_workers=conf['running_settings']['eval_n_workers'],
@@ -46,12 +45,11 @@ def get_dataloader(conf: dict, split_set: str) -> DataLoader:
                          f"- batch_size: {conf['eval_batch_size']} \n"
                          f"- eval_n_workers: {conf['running_settings']['eval_n_workers']} \n")
 
-            return val_dataloader
         case 'test':
 
             test_dataset = EvalQueryDataset(data_path=conf['dataset_path'], split_set='test')
 
-            test_dataloader = DataLoader(
+            dataloader = DataLoader(
                 test_dataset,
                 batch_size=conf['eval_batch_size'],
                 num_workers=conf['running_settings']['eval_n_workers'],
@@ -61,6 +59,7 @@ def get_dataloader(conf: dict, split_set: str) -> DataLoader:
             logging.info(f"Built Test DataLoader module \n"
                          f"- batch_size: {conf['eval_batch_size']} \n"
                          f"- eval_n_workers: {conf['running_settings']['eval_n_workers']} \n")
-            return test_dataloader
         case _:
             raise ValueError(f"split_set value '{split_set}' is invalid! Please choose from [train, val, test]")
+
+    return dataloader

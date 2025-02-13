@@ -7,7 +7,7 @@ from torch.utils import data
 from tqdm import trange, tqdm
 
 from algorithms.base import BaseQueryMatchingModel
-from eval.eval import evaluate_algorithm
+from evaluation.eval import evaluate_algorithm
 
 
 class Trainer:
