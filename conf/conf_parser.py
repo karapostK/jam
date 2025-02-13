@@ -41,10 +41,9 @@ def parse_conf(conf: dict, alg: AlgorithmsEnum, dataset: DatasetsEnum) -> dict:
     conf['dataset'] = dataset.name
     conf['data_path'] = conf['data_path']
     if 'dataset_path' not in conf:
-        conf['dataset_path'] = os.path.join(conf['data_path'], conf['dataset'],
-                                            'processed_dataset')  # todo: adjust data_paths
+        conf['dataset_path'] = os.path.join(conf['data_path'], conf['dataset'], 'processed')
 
-    # Adding default parameters
+        # Adding default parameters
     added_parameters_list = []
 
     if 'model_save_path' not in conf:
@@ -122,8 +121,7 @@ def parse_conf(conf: dict, alg: AlgorithmsEnum, dataset: DatasetsEnum) -> dict:
         conf['device'] = DEF_DEVICE
         added_parameters_list.append(f"device={conf['device']}")
     else:
-        assert conf['device'] in ['cpu',
-                                  'cuda'], f"Device ({conf['device']}) not available"
+        assert conf['device'] in ['cpu', 'cuda'], f"Device ({conf['device']}) not available"
 
     if 'max_patience' not in conf:
         conf['max_patience'] = conf['n_epochs'] - 1

@@ -150,7 +150,6 @@ class Trainer:
 
         return self.best_metrics
 
-    @torch.no_grad()
     def val(self):
         """
         Runs the evaluation procedure.

@@ -9,9 +9,9 @@ def generate_id(prefix=None, postfix=None):
     dateTimeObj = datetime.now()
     uid = '{}-{}-{}_{}-{}-{}.{}'.format(dateTimeObj.year, dateTimeObj.month, dateTimeObj.day, dateTimeObj.hour,
                                         dateTimeObj.minute, dateTimeObj.second, dateTimeObj.microsecond)
-    if not prefix is None:
+    if prefix is not None:
         uid = prefix + "_" + uid
-    if not postfix is None:
+    if postfix is not None:
         uid = uid + "_" + postfix
     return uid
 
