@@ -74,6 +74,8 @@ class Trainer:
         Runs the Training procedure
         """
 
+        self.model.to(self.device)
+
         current_patience = self.max_patience
         log_dict = self.val()
 

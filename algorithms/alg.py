@@ -5,6 +5,7 @@ from torch import nn
 
 from algorithms.base import BaseQueryMatchingModel
 from data.feature import FeatureHolder
+from utilities.train_utils import general_weight_init
 
 
 class BaselineQueryMatching(BaseQueryMatchingModel):
@@ -27,6 +28,8 @@ class BaselineQueryMatching(BaseQueryMatchingModel):
     """
 
     def __init__(self, n_users: int, n_items: int, d: int, user_features: dict, item_features: dict):
+        super().__init__()
+
         self.n_users = n_users
         self.n_items = n_items
         self.d = d
@@ -35,52 +38,68 @@ class BaselineQueryMatching(BaseQueryMatchingModel):
         self.user_embed = torch.nn.Embedding.from_pretrained(torch.FloatTensor(user_embed), freeze=True)
         self.user_encoder = torch.nn.Linear(user_embed.shape[1], d)
 
-        self.sentence_model = SentenceTransformer('sentence-transformers/sentence-t5-l')
+        self.sentence_model = SentenceTransformer('sentence-transformers/sentence-t5-base')
         self.query_encoder = torch.nn.Linear(768, d)  # SentenceT5 output
 
         # for each item features, define embedding
-        self.item_embeds = {}
-        self.item_encoders = {}
-        for item_feat in item_features:
-            item_embed = item_features[item_feat]
-            self.item_embeds[item_feat] = torch.nn.Embedding.from_pretrained(torch.FloatTensor(item_embed), freeze=True)
-            self.item_encoders[item_feat] = torch.nn.Linear(item_embed.shape[1], d)
+        self.item_embeds = nn.ModuleDict({
+            item_feat: nn.Embedding.from_pretrained(
+                torch.FloatTensor(item_features[item_feat]), freeze=True
+            ) for item_feat in item_features
+        })
+
+        self.item_encoders = nn.ModuleDict({
+            item_feat: nn.Linear(item_features[item_feat].shape[1], d)
+            for item_feat in item_features
+        })
 
         # Init the model
         # TODO. prettify here
-        self.apply(self.user_encoder)
-        self.apply(self.query_encoder)
+        self.user_encoder.apply(general_weight_init)
+        self.query_encoder.apply(general_weight_init)
         for item_encoder in self.item_encoders.values():
-            self.apply(item_encoder)
-
-        super().__init__()
+            item_encoder.apply(general_weight_init)
 
     def forward(self, q_idxs: torch.Tensor, q_text: tuple, u_idxs: torch.Tensor, i_idxs: torch.Tensor) -> torch.Tensor:
 
+        #TODO: Need to check all over this again.
         # Encode the queries
-        q_sentence = self.sentence_model.encode(sentences=q_text, convert_to_tensor=True)  # todo: does it work?
-        q_embed = self.query_encoder(q_sentence)
+        q_sentence = self.sentence_model.encode(sentences=q_text, convert_to_tensor=True,
+                                                batch_size=q_idxs.shape[0],
+                                                show_progress_bar=False)
+        q_embed = self.query_encoder(q_sentence)  # (batch_size, d)
 
         # Encode the users
         u_embed = self.user_embed(u_idxs)
-        u_embed = self.user_encoder(u_embed)
+        u_embed = self.user_encoder(u_embed)  # (batch_size, d)
 
         # Encode the items
-        i_embed = torch.cat([self.item_encoders[item](self.item_embeds[item](i_idxs)) for item in self.item_encoders],
-                            dim=1)
-        i_embed = i_embed.mean(dim=1)
+
+        i_reprs = []
+        for item_feat_name in self.item_embeds:
+            i_embed = self.item_embeds[item_feat_name](i_idxs)
+            i_embed = self.item_encoders[item_feat_name](i_embed)
+            i_reprs.append(i_embed)
+
+        i_embeds = torch.stack(i_reprs).to(q_embed.device)  # [repr,..]
+        i_embed = i_embeds.mean(dim=0)  # (batch_size,d) or (batch_size, n_neg, d)
 
         # Compute the dot product
-        preds = torch.sum(q_embed * u_embed * i_embed, dim=1)
+        translation = q_embed + u_embed
+        if len(i_embed.shape) == 3:
+            translation = translation.unsqueeze(1)
+        preds = torch.sum(translation * i_embed, dim=-1)
         return preds
 
     def predict_all(self, q_idxs: torch.Tensor, q_text: tuple, u_idxs: torch.Tensor) -> torch.Tensor:
 
-        batch_size = q_idxs.shape[0]
-        i_idxs = torch.arange(self.n_items).unsqueeze(0).repeat(batch_size, 1)  # todo: not sure about repeat 1... why?
+        i_idxs = torch.arange(self.n_items).unsqueeze(0).to(q_idxs.device)
         return self.forward(q_idxs, q_text, u_idxs, i_idxs)
 
     def compute_loss(self, pos_preds: torch.Tensor, neg_preds: torch.Tensor) -> dict:
+
+        # pos_preds Shape is (batch_size,)
+        # neg_preds Shape is (batch_size, n_neg)
 
         # BPR loss
         loss_func = nn.BCEWithLogitsLoss()

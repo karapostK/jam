@@ -21,13 +21,14 @@ class BaseQueryMatchingModel(ABC, nn.Module):
     def forward(self, q_idxs: torch.Tensor, q_text: tuple, u_idxs: torch.Tensor, i_idxs: torch.Tensor) -> torch.Tensor:
         """
         Predicts the affinity scores between (u,q) and i.
+        NB. it can consider also negative sampling!
 
         :param q_idxs:  Query indexes. Shape is (batch_size,)
         :param q_text:  Query text. Shape is (batch_size,). Tuple of strings.
         :param u_idxs:  User indexes. Shape is (batch_size,)
-        :param i_idxs: Item indexes. Shape is (batch_size,)
+        :param i_idxs: Item indexes. Shape is (batch_size,) or (batch_size, n_neg) or (batch_size, n_items)
         :return:
-            preds: Predicted scores. Shape is (batch_size,)
+            preds: Predicted scores. Shape is (batch_size,) or (batch_size, neg) or (batch_size, n_items)
         """
 
     @abstractmethod
