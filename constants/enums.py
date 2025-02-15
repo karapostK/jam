@@ -1,11 +1,11 @@
-from enum import StrEnum, auto
+from enum import StrEnum, auto, Enum
+
+from algorithms.alg import *
 
 
 class DatasetsEnum(StrEnum):
-    amazon23 = auto()
+    amazon23office = auto()
 
 
-class AlgorithmsEnum(StrEnum):
-    basematching = auto()
-
-
+class AlgorithmsEnum(Enum):
+    basematching = BaselineQueryMatching
