@@ -4,6 +4,7 @@ import os
 
 import numpy as np
 import pandas as pd
+import torch
 from torch.utils.data import DataLoader, Dataset
 
 """
@@ -134,9 +135,9 @@ class EvalQueryDataset(Dataset):
         pos_items_mask = np.zeros(self.n_items)
         pos_items_mask[entry['item_idxs']] = 1
 
-        exclude_items_mask = np.zeros(self.n_items)
+        exclude_items_mask = np.zeros(self.n_items, dtype=bool)
         items_excluded = self.excludeData.get(entry['query_idx'], np.array([], dtype=np.int32))
-        exclude_items_mask[items_excluded] = 1
+        exclude_items_mask[items_excluded] = True
 
         return entry['query_idx'], entry['text'], entry['user_idx'], pos_items_mask, exclude_items_mask
 
@@ -151,6 +152,12 @@ def collate_fn_negative_sampling(batch: tuple, query2itemsSet: dict, n_items: in
     :return: query_idx, text, user_idx, item_idx, neg_idxs
     """
     batch_size = len(batch)
+
+    query_idxs = torch.tensor([b[0] for b in batch], dtype=torch.long)
+    texts = [b[1] for b in batch]
+    user_idxs = torch.tensor([b[2] for b in batch], dtype=torch.long)
+    item_idxs = torch.tensor([b[3] for b in batch], dtype=torch.long)
+
     neg_idxs = np.empty((batch_size, n_negs), dtype=np.int64)
     mask = np.ones_like(neg_idxs, dtype=bool)
 
@@ -164,7 +171,9 @@ def collate_fn_negative_sampling(batch: tuple, query2itemsSet: dict, n_items: in
                 if neg_idxs[i, j] not in pos_items:
                     mask[i, j] = False
 
-    return *batch, neg_idxs
+    neg_idxs = torch.tensor(neg_idxs, dtype=torch.long)
+
+    return query_idxs, texts, user_idxs, item_idxs, neg_idxs
 
 
 if __name__ == '__main__':
