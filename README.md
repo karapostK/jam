@@ -1,4 +1,4 @@
-# :jar: JAM Just Ask for Music  
+# :jar: JAM - Just Ask for Music  
 ### Natural Language-based Recommendations for Pre-trained Multimodal Item Recommendations
 
 
