@@ -1,0 +1,39 @@
+# NB. This file contains ALL possible parameters of the framework. Likely, you just need to set 4/5 of them
+# Check both conf/conf_parser.py and constants/conf_constants.py for more details
+
+# You NEED to set these:
+data_path: "/home/PycharmProjects/jam/data"                     # Always needed
+d: 28                                                           # Hyperparameter of BaselineQueryMatching. If not this, any hyperparameters of your model.
+
+# You CAN change these (instead of using the defaults in conf_constants.py):
+train_batch_size: 1024                                          # Batch size in terms of TRIPLETS (u,q,i)
+eval_batch_size: 256                                            # Batch size in terms of QUERIES (u)
+neg_train: 10                                                   # How many neg_samples are sampled (u.a.r) for each pos triple (u,q,i)
+n_epochs: 50                                                    # # of Epochs
+lr: 1e-3                                                        # Learning Rate
+wd: 0                                                           # Weight Decay
+optimizer: 'adamw'                                              # Optimizer class
+
+# You CAN adjust these for how you want to run your experiments
+max_patience: 49                                                # How many consecutive epochs need to pass to halt the training if we don't see an improvement on optimizing_metric on val data.
+device: cuda                                                    # Device where to send the model and batches
+running_settings:
+  train_n_workers: 5                                            # # of workers for the train dataloader
+  eval_n_workers: 5                                             # # of workers for the eval dataloader
+  #prefetch_factor: 2
+  batch_verbose: False                                          # Whether to use tqdm over batches
+
+# Likely, you don't need to change these:
+
+seed: 64                                                        # Random seed to ensure reproducibility
+use_wandb: True                                                 # Whether  we log to W&B
+model_save_path: './saved_models'                               # Dirs where all models will be saved. Automatically set
+optimizing_metric: 'ndcg@10'                                    # Which metric to look at for the fitness of the run on
+
+# AUTOMATICALLY ADDED BY conf_parser in your parsed configuration
+
+# time_run          Time-ID of the run
+# dataset           Name of the dataset
+# dataset_path      os.path.join(conf['data_path'], conf['dataset'], 'processed')
+# model_path        Path where the model will be saved. Directory is automatically created depending on whether it is a single_run or a wandb sweep.
+
