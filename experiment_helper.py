@@ -1,7 +1,6 @@
 import typing
 
 import wandb
-
 from conf.conf_parser import parse_conf_file, parse_conf, save_yaml
 from constants.enums import AlgorithmsEnum, DatasetsEnum
 from constants.wandb_constants import PROJECT_NAME, ENTITY_NAME
@@ -38,9 +37,9 @@ def run_train_val(alg: AlgorithmsEnum, dataset: DatasetsEnum, conf: typing.Union
 
     features = FeatureHolder(conf['dataset_path'])
 
-    alg = alg.value.build_from_conf(conf, train_loader.dataset, features)
+    model = alg.value.build_from_conf(conf, train_loader.dataset, features)
 
-    trainer = Trainer(alg, train_loader, val_loader, conf)
+    trainer = Trainer(model, train_loader, val_loader, conf)
 
     # Validation happens within the Trainer
     metrics_values = trainer.fit()
@@ -73,10 +72,10 @@ def run_test(alg: AlgorithmsEnum, dataset: DatasetsEnum, conf: typing.Union[str,
     test_loader = get_dataloader(conf, 'test')
     features = FeatureHolder(conf['dataset_path'])
 
-    alg = alg.value.build_from_conf(conf, test_loader.dataset, features)
-    alg.load_model_from_path(conf['model_path'])
+    model = alg.value.build_from_conf(conf, test_loader.dataset, features)
+    model.load_model_from_path(conf['model_path'])
 
-    metrics_values = evaluate_algorithm(alg, test_loader, conf['device'],
+    metrics_values = evaluate_algorithm(model, test_loader, conf['device'],
                                         verbose=conf['running_settings']['batch_verbose'])
 
     if conf['running_settings']['use_wandb']:

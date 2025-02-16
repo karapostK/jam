@@ -1,3 +1,5 @@
+import logging
+
 import torch
 from datasets import Dataset
 from sentence_transformers import SentenceTransformer
@@ -34,76 +36,95 @@ class BaselineQueryMatching(BaseQueryMatchingModel):
         self.n_items = n_items
         self.d = d
 
-        user_embed = user_features['cf']  # Pre-trained user embeddings
-        self.user_embed = torch.nn.Embedding.from_pretrained(torch.FloatTensor(user_embed), freeze=True)
-        self.user_encoder = torch.nn.Linear(user_embed.shape[1], d)
+        # User Encoder #
+        pre_train_u_embed = torch.FloatTensor(user_features['cf'])
+        self.user_encoder = nn.Sequential(
+            nn.Embedding.from_pretrained(pre_train_u_embed, freeze=True),
+            nn.Linear(pre_train_u_embed.shape[1], d)
+        )
 
+        # Item Encoders #
+        self.item_encoders = nn.ModuleDict()
+        for i_feat_name, i_feat_embeds in item_features.items():
+            pre_train_i_embeds = torch.FloatTensor(i_feat_embeds)
+            self.item_encoders[i_feat_name] = nn.Sequential(
+                nn.Embedding.from_pretrained(pre_train_i_embeds, freeze=True),
+                nn.Linear(pre_train_i_embeds.shape[1], d)
+            )
+
+        # Query Encoder #
         self.sentence_model = SentenceTransformer('sentence-transformers/sentence-t5-base')
-        self.query_encoder = torch.nn.Linear(768, d)  # SentenceT5 output
+        self.query_encoder = torch.nn.Linear(self.sentence_model.get_sentence_embedding_dimension(), d)
 
-        # for each item features, define embedding
-        self.item_embeds = nn.ModuleDict({
-            item_feat: nn.Embedding.from_pretrained(
-                torch.FloatTensor(item_features[item_feat]), freeze=True
-            ) for item_feat in item_features
-        })
-
-        self.item_encoders = nn.ModuleDict({
-            item_feat: nn.Linear(item_features[item_feat].shape[1], d)
-            for item_feat in item_features
-        })
-
-        # Init the model
-        # TODO. prettify here
-        self.user_encoder.apply(general_weight_init)
+        # Init the model #
+        self.user_encoder[1].apply(general_weight_init)
         self.query_encoder.apply(general_weight_init)
         for item_encoder in self.item_encoders.values():
-            item_encoder.apply(general_weight_init)
+            item_encoder[1].apply(general_weight_init)
+
+        logging.info("Built BaselineQueryMatching")
+        # todo add better logging for 1)parameters count 2) # of optimizable parameters
 
     def forward(self, q_idxs: torch.Tensor, q_text: tuple, u_idxs: torch.Tensor, i_idxs: torch.Tensor) -> torch.Tensor:
 
-        #TODO: Need to check all over this again.
         # Encode the queries
-        q_sentence = self.sentence_model.encode(sentences=q_text, convert_to_tensor=True,
+        q_sentence = self.sentence_model.encode(sentences=q_text,
+                                                convert_to_tensor=True,
                                                 batch_size=q_idxs.shape[0],
-                                                show_progress_bar=False)
+                                                show_progress_bar=False
+                                                )
         q_embed = self.query_encoder(q_sentence)  # (batch_size, d)
 
         # Encode the users
-        u_embed = self.user_embed(u_idxs)
-        u_embed = self.user_encoder(u_embed)  # (batch_size, d)
+        u_embed = self.user_encoder(u_idxs)  # (batch_size, d)
 
         # Encode the items
+        i_mods_embeds = torch.stack([i_mod_encoder(i_idxs) for i_mod_encoder in self.item_encoders.values()])
+        i_mods_embeds = i_mods_embeds.to(q_embed.device)  # (n_mods, batch_size, d) or # (n_mods, batch_size, n_neg, d)
 
-        i_reprs = []
-        for item_feat_name in self.item_embeds:
-            i_embed = self.item_embeds[item_feat_name](i_idxs)
-            i_embed = self.item_encoders[item_feat_name](i_embed)
-            i_reprs.append(i_embed)
+        i_embed = i_mods_embeds.mean(dim=0)  # (batch_size, d) or (batch_size, n_neg, d)
 
-        i_embeds = torch.stack(i_reprs).to(q_embed.device)  # [repr,..]
-        i_embed = i_embeds.mean(dim=0)  # (batch_size,d) or (batch_size, n_neg, d)
+        # User translation
+        u_trans = q_embed + u_embed  # (batch_size, d)
 
-        # Compute the dot product
-        translation = q_embed + u_embed
+        # Compute similarity
         if len(i_embed.shape) == 3:
-            translation = translation.unsqueeze(1)
-        preds = torch.sum(translation * i_embed, dim=-1)
+            # In case we have n_neg or n_items
+            u_trans = u_trans.unsqueeze(1)
+
+        preds = torch.sum(u_trans * i_embed, dim=-1)  # (batch_size) or (batch_size, n_neg)
+
         return preds
 
     def predict_all(self, q_idxs: torch.Tensor, q_text: tuple, u_idxs: torch.Tensor) -> torch.Tensor:
 
-        i_idxs = torch.arange(self.n_items).unsqueeze(0).to(q_idxs.device)
+        # All item indexes
+        i_idxs = torch.arange(self.n_items).to(q_idxs.device)
+        i_idxs = i_idxs.unsqueeze(0)  # (1, n_items) -> Allowing broadcasting over batch_size
+
         return self.forward(q_idxs, q_text, u_idxs, i_idxs)
 
     def compute_loss(self, pos_preds: torch.Tensor, neg_preds: torch.Tensor) -> dict:
 
-        # pos_preds Shape is (batch_size,)
-        # neg_preds Shape is (batch_size, n_neg)
+        """
+        Computing BPR loss
+        :param pos_preds: (batch_size,)
+        :param neg_preds: (batch_size, n_neg)
+        :return:
+        """
 
-        # BPR loss
-        loss_func = nn.BCEWithLogitsLoss()
-        return {'loss': loss_func(pos_preds.unsqueeze(1) - neg_preds, torch.ones_like(neg_preds))}
+        pos_preds = pos_preds.unsqueeze(-1)  # (batch_size, 1)
+
+        diff = pos_preds - neg_preds  # (batch_size, n_neg)
+
+        loss_val = nn.BCEWithLogitsLoss()(
+            diff,
+            torch.ones_like(diff)
+        )
+
+        return {
+            'loss': loss_val
+        }
 
     @staticmethod
     def build_from_conf(conf: dict, dataset: Dataset, feature_holder: FeatureHolder):

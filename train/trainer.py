@@ -112,7 +112,6 @@ class Trainer:
                 pos_preds = self.model(q_idxs, q_text, u_idxs, i_idxs)
                 neg_preds = self.model(q_idxs, q_text, u_idxs, neg_i_idxs)
 
-                # todo: make sure there is a single entry ('loss') in the dict
                 losses = self.model.compute_loss(pos_preds, neg_preds)
 
                 epoch_losses.update({k: v.item() + epoch_losses[k] for k, v in losses.items()})
