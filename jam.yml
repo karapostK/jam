@@ -1,0 +1,22 @@
+name: test_c
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.12
+  - scipy
+  - tqdm
+  - pandas
+  - notebook
+  - datasets
+  - ipywidgets
+  - matplotlib
+  - pip
+  - pip:
+      - sentence-transformers
+      - wandb
+      - torch
+
+
+
+
