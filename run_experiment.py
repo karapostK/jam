@@ -8,11 +8,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Start an experiment')
 
     parser.add_argument('--algorithm', '-a', type=str, help='Query Matching Algorithm',
-                        choices=[x.name for x in AlgorithmsEnum])
+                        choices=[x.name for x in AlgorithmsEnum], required=True)
     parser.add_argument('--dataset', '-d', type=str, help='Query Dataset',
                         choices=[*DatasetsEnum], required=False, default='amazon23office')
 
-    parser.add_argument('--conf_path', '-c', type=str, help='Path to the .yml containing the configuration')
+    parser.add_argument('--conf_path', '-c', type=str, help='Path to the .yml containing the configuration',
+                        required=True)
 
     parser.add_argument('--run_type', '-t', type=str, choices=['train_val', 'test', 'train_val_test'],
                         default='train_val_test',
