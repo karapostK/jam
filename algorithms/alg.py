@@ -2,7 +2,6 @@ import logging
 
 import torch
 from datasets import Dataset
-from sentence_transformers import SentenceTransformer
 from torch import nn
 
 from algorithms.base import BaseQueryMatchingModel
@@ -21,20 +20,20 @@ class BaselineQueryMatching(BaseQueryMatchingModel):
     Embeddings are frozen
 
     # Modelling q
-    Query text is retrieved from FeatureHolder and encoded with e.g. SentenceT5
-    The output is projected to dimension d.
+    The embedded query from a pre-trained language model is projected to dimension d.
 
     # Modelling i
     Item representations are retrieved from FeatureHolder, projected to dimension d, and aggregated with avg.
 
     """
 
-    def __init__(self, n_users: int, n_items: int, d: int, user_features: dict, item_features: dict):
+    def __init__(self, n_users: int, n_items: int, d: int, lang_dim: int, user_features: dict, item_features: dict):
         super().__init__()
 
         self.n_users = n_users
         self.n_items = n_items
         self.d = d
+        self.lang_dim = lang_dim
 
         # User Encoder #
         pre_train_u_embed = torch.FloatTensor(user_features['cf'])
@@ -53,8 +52,7 @@ class BaselineQueryMatching(BaseQueryMatchingModel):
             )
 
         # Query Encoder #
-        self.sentence_model = SentenceTransformer('sentence-transformers/sentence-t5-base')
-        self.query_encoder = torch.nn.Linear(self.sentence_model.get_sentence_embedding_dimension(), d)
+        self.query_encoder = torch.nn.Linear(self.lang_dim, d)
 
         # Init the model #
         self.user_encoder[1].apply(general_weight_init)
@@ -65,15 +63,11 @@ class BaselineQueryMatching(BaseQueryMatchingModel):
         logging.info("Built BaselineQueryMatching")
         # todo add better logging for 1)parameters count 2) # of optimizable parameters
 
-    def forward(self, q_idxs: torch.Tensor, q_text: tuple, u_idxs: torch.Tensor, i_idxs: torch.Tensor) -> torch.Tensor:
+    def forward(self, q_idxs: torch.Tensor, q_text: torch.Tensor, u_idxs: torch.Tensor,
+                i_idxs: torch.Tensor) -> torch.Tensor:
 
         # Encode the queries
-        q_sentence = self.sentence_model.encode(sentences=q_text,
-                                                convert_to_tensor=True,
-                                                batch_size=q_idxs.shape[0],
-                                                show_progress_bar=False
-                                                )
-        q_embed = self.query_encoder(q_sentence)  # (batch_size, d)
+        q_embed = self.query_encoder(q_text)  # (batch_size, d)
 
         # Encode the users
         u_embed = self.user_encoder(u_idxs)  # (batch_size, d)
@@ -96,7 +90,7 @@ class BaselineQueryMatching(BaseQueryMatchingModel):
 
         return preds
 
-    def predict_all(self, q_idxs: torch.Tensor, q_text: tuple, u_idxs: torch.Tensor) -> torch.Tensor:
+    def predict_all(self, q_idxs: torch.Tensor, q_text: torch.Tensor, u_idxs: torch.Tensor) -> torch.Tensor:
 
         # All item indexes
         i_idxs = torch.arange(self.n_items).to(q_idxs.device)
@@ -133,6 +127,7 @@ class BaselineQueryMatching(BaseQueryMatchingModel):
             n_users=dataset.n_users,
             n_items=dataset.n_items,
             d=conf['d'],
+            lang_dim=conf['language_model']['hidden_size'],
             user_features=feature_holder.user_features,
             item_features=feature_holder.item_features,
         )

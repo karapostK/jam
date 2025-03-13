@@ -101,6 +101,7 @@ def evaluate_algorithm(model: BaseQueryMatchingModel, eval_loader: DataLoader, d
 
     for q_idxs, q_text, u_idxs, pos_i_masks, exclude_i_masks in iterator:
         q_idxs = q_idxs.to(device)
+        q_text = q_text.to(device)
         u_idxs = u_idxs.to(device)
         pos_i_masks = pos_i_masks.to(device)
         exclude_i_masks = exclude_i_masks.to(device)

@@ -18,13 +18,13 @@ class BaseQueryMatchingModel(ABC, nn.Module):
         super().__init__()
 
     @abstractmethod
-    def forward(self, q_idxs: torch.Tensor, q_text: tuple, u_idxs: torch.Tensor, i_idxs: torch.Tensor) -> torch.Tensor:
+    def forward(self, q_idxs: torch.Tensor, q_text: torch.Tensor, u_idxs: torch.Tensor, i_idxs: torch.Tensor) -> torch.Tensor:
         """
         Predicts the affinity scores between (u,q) and i.
         NB. it can consider also negative sampling!
 
         :param q_idxs:  Query indexes. Shape is (batch_size,)
-        :param q_text:  Query text. Shape is (batch_size,). Tuple of strings.
+        :param q_text:  Query text embedded. Shape is (batch_size, lang_dim). Where lang_dim is the language model dimension
         :param u_idxs:  User indexes. Shape is (batch_size,)
         :param i_idxs: Item indexes. Shape is (batch_size,) or (batch_size, n_neg) or (batch_size, n_items)
         :return:
@@ -32,12 +32,12 @@ class BaseQueryMatchingModel(ABC, nn.Module):
         """
 
     @abstractmethod
-    def predict_all(self, q_idxs: torch.Tensor, q_text: tuple, u_idxs: torch.Tensor) -> torch.Tensor:
+    def predict_all(self, q_idxs: torch.Tensor, q_text: torch.Tensor, u_idxs: torch.Tensor) -> torch.Tensor:
         """
         Predicts the affinity scores between (u,q) and all items.
 
         :param q_idxs:  Query indexes. Shape is (batch_size,)
-        :param q_text:  Query text. Shape is (batch_size,). Tuple of strings.
+        :param q_text:  Query text embedded. Shape is (batch_size, lang_dim). Where lang_dim is the language model dimension
         :param u_idxs:  User indexes. Shape is (batch_size,)
         :return:
             preds: Predicted scores. Shape is (batch_size, n_items)

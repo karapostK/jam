@@ -105,6 +105,7 @@ class Trainer:
 
             for q_idxs, q_text, u_idxs, i_idxs, neg_i_idxs in iterator:
                 q_idxs = q_idxs.to(self.device)
+                q_text = q_text.to(self.device)
                 u_idxs = u_idxs.to(self.device)
                 i_idxs = i_idxs.to(self.device)
                 neg_i_idxs = neg_i_idxs.to(self.device)
