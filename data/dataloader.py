@@ -12,7 +12,7 @@ def get_dataloader(conf: dict, split_set: str) -> DataLoader:
 
     match split_set:
         case 'train':
-            train_dataset = TrainQueryDataset(data_path=conf['dataset_path'])
+            train_dataset = TrainQueryDataset(data_path=conf['dataset_path'], lang_model_conf=conf['language_model'])
 
             dataloader = DataLoader(
                 train_dataset,
@@ -25,7 +25,7 @@ def get_dataloader(conf: dict, split_set: str) -> DataLoader:
                     n_negs=conf['neg_train']
                 ),
                 prefetch_factor=conf['running_settings']['prefetch_factor'] if 'prefetch_factor' in conf[
-                    'running_settings'] else 2 # todo: throws an error when n_workers=0
+                    'running_settings'] else 2  # todo: throws an error when n_workers=0
             )
 
             logging.info(f"Built Train DataLoader module \n"
@@ -33,7 +33,8 @@ def get_dataloader(conf: dict, split_set: str) -> DataLoader:
                          f"- train_n_workers: {conf['running_settings']['train_n_workers']} \n")
         case 'val':
 
-            val_dataset = EvalQueryDataset(data_path=conf['dataset_path'], split_set='val')
+            val_dataset = EvalQueryDataset(data_path=conf['dataset_path'], split_set='val',
+                                           lang_model_conf=conf['language_model'])
 
             dataloader = DataLoader(
                 val_dataset,
@@ -47,7 +48,8 @@ def get_dataloader(conf: dict, split_set: str) -> DataLoader:
 
         case 'test':
 
-            test_dataset = EvalQueryDataset(data_path=conf['dataset_path'], split_set='test')
+            test_dataset = EvalQueryDataset(data_path=conf['dataset_path'], split_set='test',
+                                            lang_model_conf=conf['language_model'])
 
             dataloader = DataLoader(
                 test_dataset,

@@ -134,6 +134,33 @@ def parse_conf(conf: dict, alg: AlgorithmsEnum, dataset: DatasetsEnum) -> dict:
         conf['running_settings']['train_n_workers'] = DEF_TRAIN_NUM_WORKERS
         added_parameters_list.append(f"train_n_workers={conf['running_settings']['train_n_workers']}")
 
+    if 'language_model' not in conf:
+        conf['language_model'] = dict()
+
+    if 'model_name' not in conf['language_model']:
+        conf['language_model']['model_name'] = DEF_LANGUAGE_MODEL_NAME
+        added_parameters_list.append(f"model_name={conf['language_model']['model_name']}")
+
+    if 'tokenizer_name' not in conf['language_model']:
+        conf['language_model']['tokenizer_name'] = DEF_LANGUAGE_MODEL_NAME
+        added_parameters_list.append(f"tokenizer_name={conf['language_model']['tokenizer_name']}")
+
+    if 'max_length' not in conf['language_model']:
+        conf['language_model']['max_length'] = DEF_MAX_LEN_LANGUAGE_MODEL
+        added_parameters_list.append(f"max_length={conf['language_model']['max_length']}")
+
+    if 'batch_size' not in conf['language_model']:
+        conf['language_model']['batch_size'] = DEF_BATCH_SIZE_LANGUAGE_MODEL
+        added_parameters_list.append(f"batch_size={conf['language_model']['batch_size']}")
+
+    if 'device' not in conf['language_model']:
+        conf['language_model']['device'] = conf['device']
+        added_parameters_list.append(f"device={conf['language_model']['device']}")
+
+    if 'hidden_size' not in conf['language_model']:
+        conf['language_model']['hidden_size'] = DEF_HIDDEN_SIZE_LANGUAGE_MODEL
+        added_parameters_list.append(f"hidden_size={conf['language_model']['hidden_size']}")
+
     print('Added these default parameters: ', ", ".join(added_parameters_list))
     print('For more detail, see conf/conf_parser.py & constants/conf_constants.py')
 

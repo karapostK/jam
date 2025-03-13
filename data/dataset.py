@@ -7,26 +7,39 @@ import pandas as pd
 import torch
 from torch.utils.data import DataLoader, Dataset
 
+from data.data_processing import QueryProcessor
+
 """
 File formats:
-    <train/val/test>_split.tsv: query_idx \t text \t user_idx \t [item_idx_0,...,item_idx_n]        -> Header: query_idx, user_idx, item_idxs
+    <train/val/test>_split.tsv: query_idx \t text \t user_idx \t [item_idx_0,...,item_idx_n]        -> Header: query_idx, text, user_idx, item_idxs
     user_idxs.tsv: user_idx, <dataset_user_id>                                                      -> Header: user_idx, <dataset_user_id>
     item_idxs.tsv: item_idx, <dataset_item_id>                                                      -> Header: item_idx, <dataset_item_id>
 """
 
 
 class TrainQueryDataset(Dataset):
+    """
+    Note on internal data:
+    - triplets: DataFrame with columns query_idx, user_idx, item_idx
+    - query2itemsSet: dictionary query_idx -> set(item_idxs)
+    - queryData: DataFrame with columns query_idx, text
+    - query2embedding: dictionary query_idx -> embedded_query
+    """
 
-    def __init__(self, data_path: str):
+    def __init__(self, data_path: str, lang_model_conf: dict):
         self.data_path = data_path
+
+        processor = QueryProcessor(data_path, lang_model_conf, split_set='train')
 
         # Filled by _load_data
         self.triplets = None
         self.n_users = None
         self.n_items = None
         self.query2itemsSet = None
+        self.queryData = None
 
         self._load_data()
+        self.query2embedding = processor.process_data(self.queryData)
 
         logging.info(f'Built TrainQueryDataset module\n'
                      f'- data_path: {self.data_path}\n'
@@ -42,15 +55,19 @@ class TrainQueryDataset(Dataset):
             converters={'item_idxs': ast.literal_eval}
         )
 
-        # Flattening data to have one item per row
-        self.triplets = data.explode('item_idxs').rename(columns={'item_idxs': 'item_idx'})
-
         # Building query2itemsSet
         self.query2itemsSet = {query_idx: set(items) for query_idx, items in zip(data['query_idx'], data['item_idxs'])}
+
+        # Flattening data to have one item per row
+        self.triplets = data[['query_idx', 'user_idx', 'item_idxs']].explode('item_idxs').rename(
+            columns={'item_idxs': 'item_idx'})
 
         # Reading # of users and items
         self.n_users = pd.read_csv(os.path.join(self.data_path, 'user_idxs.tsv')).shape[0]
         self.n_items = pd.read_csv(os.path.join(self.data_path, 'item_idxs.tsv')).shape[0]
+
+        # Keeping track of query data
+        self.queryData = data[['query_idx', 'text']]
 
         logging.info('Finished loading data')
 
@@ -59,22 +76,37 @@ class TrainQueryDataset(Dataset):
 
     def __getitem__(self, index):
         entry = self.triplets.iloc[index]
-        return entry['query_idx'], entry['text'], entry['user_idx'], entry['item_idx']
+
+        embedded_query = self.query2embedding[entry['query_idx']]
+
+        return entry['query_idx'], embedded_query, entry['user_idx'], entry['item_idx']
 
 
 class EvalQueryDataset(Dataset):
+    """
+    Note on internal data:
+    - queries: DataFrame with columns query_idx, user_idx, item_idxs
+    - excludeData: dictionary query_idx -> np.array(item_idxs)
+    - query2embedding: dictionary query_idx -> embedded_query
+    - queryData: DataFrame with columns query_idx, text
+    """
 
-    def __init__(self, data_path: str, split_set: str):
+    def __init__(self, data_path: str, split_set: str, lang_model_conf: dict):
         assert split_set in ['val', 'test'], f'<{split_set}> is not a valid split set!'
         self.data_path = data_path
         self.split_set = split_set
 
+        processor = QueryProcessor(data_path, lang_model_conf, split_set)
+
+        # Filled by _load_data
         self.queries = None
         self.n_users = None
         self.n_items = None
         self.excludeData = None
+        self.queryData = None
 
         self._load_data()
+        self.query2embedding = processor.process_data(self.queryData)
 
         logging.info(f'Built EvalQueryDataset module\n'
                      f'- data_path: {self.data_path}\n'
@@ -93,6 +125,7 @@ class EvalQueryDataset(Dataset):
 
         data['item_idxs'] = data['item_idxs'].apply(lambda x: np.array(x))
         self.queries = data
+        self.queryData = data[['query_idx', 'text']]
 
         # Reading # of users and items
         self.n_users = pd.read_csv(os.path.join(self.data_path, 'user_idxs.tsv')).shape[0]
@@ -114,7 +147,7 @@ class EvalQueryDataset(Dataset):
             # Code below updates the dictionary with the validation data, iterating over the val query_idxs
             # 1. If the query_idx is not in the dictionary, it adds it with the corresponding item_idxs (that's get({}))
             # 2. If the query_idx is already in the dictionary, it updates the item_idxs with the union of the two sets
-            # NB. query_ids in excludeData not in the validation set will remain unchanged
+            # NB. query_ids in excludeData but not in the validation set will remain unchanged
             excludeData.update(
                 {
                     query_idx: set(items).union(excludeData.get(query_idx, {}))
@@ -139,13 +172,15 @@ class EvalQueryDataset(Dataset):
         items_excluded = self.excludeData.get(entry['query_idx'], np.array([], dtype=np.int32))
         exclude_items_mask[items_excluded] = True
 
-        return entry['query_idx'], entry['text'], entry['user_idx'], pos_items_mask, exclude_items_mask
+        embedded_query = self.query2embedding[entry['query_idx']]
+
+        return entry['query_idx'], embedded_query, entry['user_idx'], pos_items_mask, exclude_items_mask
 
 
 def collate_fn_negative_sampling(batch: tuple, query2itemsSet: dict, n_items: int, n_negs=10):
     """
     Collate function for negative sampling. Performs uniform sampling of negative items.
-    :param batch: list of tuples (query_idx, text, user_idx, item_idx)
+    :param batch: list of tuples (query_idx, text_emb, user_idx, item_idx)
     :param query2itemsSet: dictionary query_idx -> set(item_idxs)
     :param n_items: number of items
     :param n_negs: number of negative samples
@@ -154,7 +189,7 @@ def collate_fn_negative_sampling(batch: tuple, query2itemsSet: dict, n_items: in
     batch_size = len(batch)
 
     query_idxs = torch.tensor([b[0] for b in batch], dtype=torch.long)
-    texts = [b[1] for b in batch]
+    text_embs = torch.stack([b[1] for b in batch])
     user_idxs = torch.tensor([b[2] for b in batch], dtype=torch.long)
     item_idxs = torch.tensor([b[3] for b in batch], dtype=torch.long)
 
@@ -173,7 +208,7 @@ def collate_fn_negative_sampling(batch: tuple, query2itemsSet: dict, n_items: in
 
     neg_idxs = torch.tensor(neg_idxs, dtype=torch.long)
 
-    return query_idxs, texts, user_idxs, item_idxs, neg_idxs
+    return query_idxs, text_embs, user_idxs, item_idxs, neg_idxs
 
 
 if __name__ == '__main__':
@@ -182,8 +217,16 @@ if __name__ == '__main__':
 
     data_path = './amazon23office/processed'
 
+    lang_model_conf = {
+        'tokenizer_name': 'answerdotai/ModernBERT-base',
+        'model_name': 'answerdotai/ModernBERT-base',
+        'device': 'cuda',
+        'max_length': 100,
+        'batch_size': 2000
+    }
+
     # Train
-    trainDataset = TrainQueryDataset(data_path)
+    trainDataset = TrainQueryDataset(data_path, lang_model_conf=lang_model_conf)
     print(trainDataset[0])
 
     dataloader = DataLoader(
@@ -199,7 +242,7 @@ if __name__ == '__main__':
         break
 
     # Val
-    valDataset = EvalQueryDataset(data_path, 'val')
+    valDataset = EvalQueryDataset(data_path, 'val', lang_model_conf=lang_model_conf)
     print(valDataset[0])
 
     dataloader = DataLoader(
@@ -214,7 +257,7 @@ if __name__ == '__main__':
 
     # Test
 
-    testDataset = EvalQueryDataset(data_path, 'test')
+    testDataset = EvalQueryDataset(data_path, 'test', lang_model_conf=lang_model_conf)
     print(testDataset[0])
 
     dataloader = DataLoader(
