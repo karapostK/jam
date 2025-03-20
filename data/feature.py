@@ -38,6 +38,7 @@ class FeatureHolder:
         for file in user_features_matching_files:
             modality = file.split('_')[1]
             self.user_features[modality] = np.load(file, allow_pickle=True)
+            logging.info(f'Loaded {modality} user features. Shape is {self.user_features[modality].shape}')
         self.n_user_features = len(self.user_features)
 
         # Loading item representations, if any
@@ -46,6 +47,7 @@ class FeatureHolder:
         for file in item_features_matching_files:
             modality = file.split('_')[1]
             self.item_features[modality] = np.load(file, allow_pickle=True)
+            logging.info(f'Loaded {modality} item features. Shape is {self.item_features[modality].shape}')
         self.n_item_features = len(self.item_features)
 
         logging.info('Finished loading data')

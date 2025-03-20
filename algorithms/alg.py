@@ -60,8 +60,16 @@ class BaselineQueryMatching(BaseQueryMatchingModel):
         for item_encoder in self.item_encoders.values():
             item_encoder[1].apply(general_weight_init)
 
-        logging.info("Built BaselineQueryMatching")
-        # todo add better logging for 1)parameters count 2) # of optimizable parameters
+        logging.info("Built BaselineQueryMatching \n"
+                     f"n_users: {self.n_users} \n"
+                     f"n_items: {self.n_items} \n"
+                     f"d: {self.d} \n"
+                     f"lang_dim: {self.lang_dim} \n"
+                     f"user_features: {user_features.keys()} \n"
+                     f"item_features: {item_features.keys()} \n")
+
+        logging.info(f"Parameters count: {sum(p.numel() for p in self.parameters())}")
+        logging.info(f"Trainable Parameters count: {sum(p.numel() for p in self.parameters() if p.requires_grad)}")
 
     def forward(self, q_idxs: torch.Tensor, q_text: torch.Tensor, u_idxs: torch.Tensor,
                 i_idxs: torch.Tensor) -> torch.Tensor:
