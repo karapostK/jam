@@ -85,6 +85,12 @@ class Evaluator:
             else:
                 metrics_dict[metric_name] = np.concatenate(self.metrics_dict[metric_name])
 
+        # Computing F1 score
+        for k in self.K_VALUES:
+            num = 2 * metrics_dict[f'precision@{k}'] * metrics_dict[f'recall@{k}']
+            den = metrics_dict[f'precision@{k}'] + metrics_dict[f'recall@{k}'] + 1e-9
+            metrics_dict[f'f1@{k}'] = num / den
+
         self._reset_internal_dict()
 
         return metrics_dict
