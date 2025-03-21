@@ -29,7 +29,7 @@ def train_val_agent():
     print(f'Algorithm is {alg.name} - Dataset is {dataset.name}')
     print(f'Sweep ID is {sweep_id}')
 
-    reproducible(conf['running_settings']['seed'])
+    reproducible(conf['seed'])
 
     train_loader = get_dataloader(conf, 'train')
     val_loader = get_dataloader(conf, 'val')

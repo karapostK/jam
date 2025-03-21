@@ -30,7 +30,7 @@ def run_train_val(alg: AlgorithmsEnum, dataset: DatasetsEnum, conf: typing.Union
             job_type='train/val'
         )
 
-    reproducible(conf['running_settings']['seed'])
+    reproducible(conf['seed'])
 
     train_loader = get_dataloader(conf, 'train')
     val_loader = get_dataloader(conf, 'val')
