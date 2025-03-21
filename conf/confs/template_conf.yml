@@ -3,7 +3,7 @@
 
 # You NEED to set these:
 data_path: "/home/PycharmProjects/jam/data"                     # Always needed
-d: 28                                                           # Hyperparameter of BaselineQueryMatching. If not this, any hyperparameters of your model.
+d: 28                                                           # Hyperparameter of AverageQueryMatching. If not this, any hyperparameters of your model.
 
 # You CAN change these (instead of using the defaults in conf_constants.py):
 train_batch_size: 1024                                          # Batch size in terms of TRIPLETS (u,q,i)
