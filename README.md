@@ -91,7 +91,7 @@ NB. You can adjust how many gpus are visible to the agent by specifying `CUDA_VI
 When you activated a sweep, and you don't want to start each single agent, you can use `run_agents.py`. Originally from my cool colleague [Christian](https://github.com/Tigxy/SiBraR---Single-Branch-Recommender/blob/main/run_agent.py)
 
 When running `run_agent.py` you need to specify:
-- `sweep_id`
+- `sweep_id`. This value should be in the format `<entity_name>/<project_name>/<sweep_id>`
 - `available_gpus` (e.g. the indexes)
 - `n_parallel` or how many agents PER gpu. Need to be careful with also the # of workers.
 ## Extend
