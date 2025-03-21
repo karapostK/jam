@@ -94,8 +94,11 @@ class Evaluator:
 def evaluate_algorithm(model: BaseQueryMatchingModel, eval_loader: DataLoader, device='cpu', verbose=False):
     """
     Evaluation procedure that calls Evaluator on the dataset.
+    NB. model is always set to eval when calling this function. Call model.train() again when needed
     """
 
+    model.to(device)
+    model.eval()
     evaluator = Evaluator(aggregate_results=True)
     iterator = tqdm(eval_loader) if verbose else eval_loader
 

@@ -123,7 +123,8 @@ class Trainer:
 
             epoch_losses = {k: v / len(self.train_loader) for k, v in epoch_losses.items()}
 
-            print(f'Epoch {epoch} - Avg Train Loss {epoch_losses["loss"]:.4f} \n')  # todo possibly add more info
+            loss_info = ' - '.join(f'{k}: {v:.4f}' for k, v in epoch_losses.items())
+            print(f'Epoch {epoch} - {loss_info}\n')
 
             # --  Validation -- #
             metrics_values = self.val()
@@ -157,7 +158,6 @@ class Trainer:
         Runs the evaluation procedure.
         :return: the dictionary of the metric values
         """
-        self.model.eval()
         print('Validation started')
         metrics_values = evaluate_algorithm(self.model, self.val_loader, self.device, self.batch_verbose)
         print('Validation finished')
