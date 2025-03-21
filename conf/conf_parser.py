@@ -73,9 +73,9 @@ def parse_conf(conf: dict, alg: AlgorithmsEnum, dataset: DatasetsEnum) -> dict:
         conf['eval_batch_size'] = DEF_EVAL_BATCH_SIZE
         added_parameters_list.append(f"eval_batch_size={conf['eval_batch_size']}")
 
-    if 'seed' not in conf['running_settings']:
-        conf['running_settings']['seed'] = DEF_SEED
-        added_parameters_list.append(f"seed={conf['running_settings']['seed']}")
+    if 'seed' not in conf:
+        conf['seed'] = DEF_SEED
+        added_parameters_list.append(f"seed={conf['seed']}")
 
     if 'use_wandb' not in conf['running_settings']:
         conf['running_settings']['use_wandb'] = DEF_USE_WANDB

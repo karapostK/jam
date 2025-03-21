@@ -2,7 +2,7 @@
 # Check both conf/conf_parser.py and constants/conf_constants.py for more details
 
 # You NEED to set these:
-data_path: "/home/PycharmProjects/jam/data"                     # Always needed
+data_path: "./data"                                             # Always needed
 d: 28                                                           # Hyperparameter of AverageQueryMatching. If not this, any hyperparameters of your model.
 
 # You CAN change these (instead of using the defaults in conf_constants.py):
