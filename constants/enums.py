@@ -9,3 +9,4 @@ class DatasetsEnum(StrEnum):
 
 class AlgorithmsEnum(Enum):
     avgmatching = AverageQueryMatching
+    crossmatching = CrossAttentionQueryMatching
