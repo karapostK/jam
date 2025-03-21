@@ -42,8 +42,13 @@ class QueryProcessor:
             self.data_path, f'{model_name}_{self.split_set}_embedded_queries.pt'
         )
 
-        self.tokenized_queries = self._tokenize_queries(data, tokenized_queries_path)
-        self.embedded_queries = self._embed_queries(data, self.tokenized_queries, embedded_queries_path)
+        # If embedded queries already exist, skip tokenization
+        if os.path.exists(embedded_queries_path):
+            logging.info('Loading Embedded Queries (skipping tokenization)')
+            self.embedded_queries = torch.load(embedded_queries_path, weights_only=False)
+        else:
+            self.tokenized_queries = self._tokenize_queries(data, tokenized_queries_path)
+            self.embedded_queries = self._embed_queries(data, self.tokenized_queries, embedded_queries_path)
 
         query2embedding = {query_idx: embedded_query for query_idx, embedded_query in
                            zip(data['query_idx'], self.embedded_queries)}
