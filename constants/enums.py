@@ -8,4 +8,4 @@ class DatasetsEnum(StrEnum):
 
 
 class AlgorithmsEnum(Enum):
-    basematching = BaselineQueryMatching
+    avgmatching = AverageQueryMatching

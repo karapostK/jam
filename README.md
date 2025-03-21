@@ -58,7 +58,7 @@ Example:
 `test_conf.yml`
 ```yml
 data_path: "/home/PycharmProjects/jam/data"
-d: 28 # for basematching model
+d: 28 # for avgmatching model
 device: cuda
 
 n_epochs: 50

@@ -9,7 +9,7 @@ from data.feature import FeatureHolder
 from utilities.train_utils import general_weight_init
 
 
-class BaselineQueryMatching(BaseQueryMatchingModel):
+class AverageQueryMatching(BaseQueryMatchingModel):
     """
     Simple Model for Query Matching.
 
@@ -58,7 +58,7 @@ class BaselineQueryMatching(BaseQueryMatchingModel):
         for item_encoder in self.item_encoders.values():
             item_encoder[1].apply(general_weight_init)
 
-        logging.info("Built BaselineQueryMatching \n"
+        logging.info("Built AverageQueryMatching \n"
                      f"n_users: {self.n_users} \n"
                      f"n_items: {self.n_items} \n"
                      f"d: {self.d} \n"
@@ -99,7 +99,7 @@ class BaselineQueryMatching(BaseQueryMatchingModel):
     @staticmethod
     def build_from_conf(conf: dict, dataset: Dataset, feature_holder: FeatureHolder):
 
-        return BaselineQueryMatching(
+        return AverageQueryMatching(
             n_users=dataset.n_users,
             n_items=dataset.n_items,
             d=conf['d'],
