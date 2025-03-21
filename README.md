@@ -96,7 +96,7 @@ then run
 ### Add Algorithms
 Take a look at the `BaseQueryMatchingModel`in `algorithms/base` on what functionalities are expected from a new algorithm.
 
-You can implement your class in `algorithms/alg` (e.g. look at `BaselineQueryMatching`). Creating a descendent of `BaseQueryMatchingModel` would be the best ;). 
+You can implement your class in `algorithms/alg` (e.g. look at `AverageQueryMatching`). Creating a descendent of `BaseQueryMatchingModel` would be the best ;). 
 
 When the main methods are implemented, add your class to `AlgorithmsEnum` in `constants/enums.py` so it can be recognized when calling `run_experiments`
 
