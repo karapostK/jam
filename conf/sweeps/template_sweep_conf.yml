@@ -1,0 +1,84 @@
+program: sweep_agent.py
+method: grid
+# todo: set the values below here.
+name: <name-of-the-sweep>
+project: <your-project-name>
+entity: <your-entity-name>
+
+parameters:
+  #### Fixed Hyperparameters ####
+  data_path:
+    value: './data'
+  alg:
+    value: #todo: see AlgorithmsEnum in constants/enums.py
+  dataset:
+    value: #todo: see DatasetsEnum in constants/enums.py
+
+  # Model Parameters #
+
+  # Training Parameters #
+  n_epochs:
+    value: 50
+  neg_train:
+    value: 10
+
+  # Optimization
+  optimizer:
+    value: 'adamw'
+  wd:
+    value: 1e-3
+
+  # Batch Sizes
+  train_batch_size:
+    value: 1024
+  eval_batch_size:
+    value: 64
+
+  # Other
+  device:
+    value: cuda
+  running_settings:
+    parameters:
+      train_n_workers:
+        value: 4
+      eval_n_workers:
+        value: 4
+      batch_verbose:
+        value: False
+
+  #### Varying Hyperparameters ####
+
+  # Model Parameters #
+  d:
+    distribution: categorical
+    values:
+      - 18
+      - 32
+      - 64
+  # Training Parameters #
+  lr:
+    distribution: categorical
+    values:
+      - 1e-4
+      - 5e-4
+      - 1e-3
+  # Running Parameters #
+  seed:
+    distribution: categorical
+    values:
+      - 59
+      - 60
+      - 61
+
+
+
+
+
+
+
+
+
+
+
+
+

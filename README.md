@@ -75,9 +75,25 @@ then run
 (if `-t` is not specified, it will run `train/val/test`)
 
 
-### Running Multiple Experiments (soon)
+### Running Multiple Experiments (Sweeps with W&B)
+To run multiple experiments, JAM relies on W&B sweeps. This is to execute different `train/val` experiments.
 
+1. Create a `.yml` config file (possibly in `conf/sweeps/`). Take `conf/sweeps/template_sweep_conf.yml` as reference. See `constants/conf_constants.py` for defaults.
+      1. Specify again your `entity_name` and `project_name` in the conf. These are the same values you had for the Logging step above.
+      2. Give a meaningful name to your sweep (e.g. `<algorithm_name>-<dataset_name>` should suffice. Add these values to the `parameters` section as well. See `constants/enums.py` for possible values. 
+      3. Adjust the rest of the configuration as you please. See the [official docs](https://docs.wandb.ai/guides/sweeps/) on W&B.  
+2. Activate the sweep. `wandb sweep conf/sweeps/test_sweep_conf.yml`. Your sweep now should be online and can be monitored on your dashboard.
+3. Start 1+ agents. The command to start an agent is returned by wandb when activating the sweep. It's in the shape of `wandb agent <entity_name>/<project_name>/<sweep_id>`.
 
+NB. You can adjust how many gpus are visible to the agent by specifying `CUDA_VISIBLE_DEVICES=... wandb agent..`
+
+#### Multiple Runs on a Server
+When you activated a sweep, and you don't want to start each single agent, you can use `run_agents.py`. Originally from my cool colleague [Christian](https://github.com/Tigxy/SiBraR---Single-Branch-Recommender/blob/main/run_agent.py)
+
+When running `run_agent.py` you need to specify:
+- `sweep_id`
+- `available_gpus` (e.g. the indexes)
+- `n_parallel` or how many agents PER gpu. Need to be careful with also the # of workers.
 ## Extend
 ### Codebase Structure
 ```
