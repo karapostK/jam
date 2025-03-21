@@ -14,8 +14,11 @@ class BaseQueryMatchingModel(ABC, nn.Module):
     Base class for Query Matching models.
     """
 
-    def __init__(self):
+    def __init__(self, n_users: int, n_items: int):
         super().__init__()
+
+        self.n_users = n_users
+        self.n_items = n_items
 
     @abstractmethod
     def forward(self, q_idxs: torch.Tensor, q_text: torch.Tensor, u_idxs: torch.Tensor, i_idxs: torch.Tensor) -> torch.Tensor:
@@ -31,7 +34,6 @@ class BaseQueryMatchingModel(ABC, nn.Module):
             preds: Predicted scores. Shape is (batch_size,) or (batch_size, neg) or (batch_size, n_items)
         """
 
-    @abstractmethod
     def predict_all(self, q_idxs: torch.Tensor, q_text: torch.Tensor, u_idxs: torch.Tensor) -> torch.Tensor:
         """
         Predicts the affinity scores between (u,q) and all items.
@@ -43,10 +45,15 @@ class BaseQueryMatchingModel(ABC, nn.Module):
             preds: Predicted scores. Shape is (batch_size, n_items)
         """
 
-    @abstractmethod
+        # All item indexes
+        i_idxs = torch.arange(self.n_items).to(q_idxs.device)
+        i_idxs = i_idxs.unsqueeze(0)  # (1, n_items) -> Allowing broadcasting over batch_size
+
+        return self.forward(q_idxs, q_text, u_idxs, i_idxs)
+
     def compute_loss(self, pos_preds: torch.Tensor, neg_preds: torch.Tensor) -> dict:
         """
-        Computes the loss given the predictions on positive and negative items.
+        Computes the loss given the predictions on positive and negative items. Default is BPR Loss
 
         NB. dict should have ALWAYS a single entry with key 'loss'
         :param pos_preds: Positive predictions. Shape is (batch_size,)
@@ -54,6 +61,19 @@ class BaseQueryMatchingModel(ABC, nn.Module):
         :return:
             losses: Dictionary with the loss values. IT MUST HAVE AN ENTITY 'loss'
         """
+
+        pos_preds = pos_preds.unsqueeze(-1)  # (batch_size, 1)
+
+        diff = pos_preds - neg_preds  # (batch_size, n_neg)
+
+        loss_val = nn.BCEWithLogitsLoss()(
+            diff,
+            torch.ones_like(diff)
+        )
+
+        return {
+            'loss': loss_val
+        }
 
     def save_model_to_path(self, path: str):
         """

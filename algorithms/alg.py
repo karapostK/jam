@@ -28,10 +28,8 @@ class BaselineQueryMatching(BaseQueryMatchingModel):
     """
 
     def __init__(self, n_users: int, n_items: int, d: int, lang_dim: int, user_features: dict, item_features: dict):
-        super().__init__()
+        super().__init__(n_users, n_items)
 
-        self.n_users = n_users
-        self.n_items = n_items
         self.d = d
         self.lang_dim = lang_dim
 
@@ -97,36 +95,6 @@ class BaselineQueryMatching(BaseQueryMatchingModel):
         preds = torch.sum(u_trans * i_embed, dim=-1)  # (batch_size) or (batch_size, n_neg)
 
         return preds
-
-    def predict_all(self, q_idxs: torch.Tensor, q_text: torch.Tensor, u_idxs: torch.Tensor) -> torch.Tensor:
-
-        # All item indexes
-        i_idxs = torch.arange(self.n_items).to(q_idxs.device)
-        i_idxs = i_idxs.unsqueeze(0)  # (1, n_items) -> Allowing broadcasting over batch_size
-
-        return self.forward(q_idxs, q_text, u_idxs, i_idxs)
-
-    def compute_loss(self, pos_preds: torch.Tensor, neg_preds: torch.Tensor) -> dict:
-
-        """
-        Computing BPR loss
-        :param pos_preds: (batch_size,)
-        :param neg_preds: (batch_size, n_neg)
-        :return:
-        """
-
-        pos_preds = pos_preds.unsqueeze(-1)  # (batch_size, 1)
-
-        diff = pos_preds - neg_preds  # (batch_size, n_neg)
-
-        loss_val = nn.BCEWithLogitsLoss()(
-            diff,
-            torch.ones_like(diff)
-        )
-
-        return {
-            'loss': loss_val
-        }
 
     @staticmethod
     def build_from_conf(conf: dict, dataset: Dataset, feature_holder: FeatureHolder):
