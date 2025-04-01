@@ -99,6 +99,40 @@ class AverageQueryMatching(BaseQueryMatchingModel):
 
         return preds
 
+    def predict_weight_and_score(self, q_idxs: torch.Tensor, q_text: torch.Tensor, u_idxs: torch.Tensor,
+                                 i_idxs: torch.Tensor):
+        """
+        Returns the score of the model for a batch of data in the format weight * score.
+        NB. i_idxs should be a 2D tensor.
+        returns
+            scores: (batch_size, n_mods)
+            weights: (batch_size, n_mods)
+        """
+
+        assert i_idxs.ndim == 2, f"Expected 2D tensor, got {i_idxs.ndim}D"
+
+        # Encode the queries
+        q_embed = self.query_encoder(q_text)  # (batch_size, d)
+
+        # Encode the users
+        u_embed = self.user_encoder(u_idxs)  # (batch_size, d)
+
+        # User translation
+        u_trans = q_embed + u_embed  # (batch_size, d)
+
+        # Encode the items
+        i_mods_embeds = torch.stack([i_mod_encoder(i_idxs) for i_mod_encoder in self.item_encoders.values()])
+        i_mods_embeds = i_mods_embeds.to(q_embed.device)  # (n_mods, batch_size, d)
+
+        # Computing per-modality scores
+        scores = torch.sum(u_trans * i_mods_embeds, dim=-1)  # (n_mods, batch_size)
+        weights = torch.full(scores.shape, 1 / len(self.item_encoders), device=scores.device)  # Same as above
+
+        scores = scores.T
+        weights = weights.T
+
+        return scores, weights
+
     @staticmethod
     def build_from_conf(conf: dict, dataset: Dataset, feature_holder: FeatureHolder):
 
@@ -216,7 +250,7 @@ class CrossAttentionQueryMatching(BaseQueryMatchingModel):
             v = rearrange(v, 'm b d -> b 1 m d')
 
         # (batch_size, n , 1, 1, d) or (batch_size, 1, 1, d)
-        i_embed = nn.functional.scaled_dot_product_attention(q, k, v)
+        i_embed = F.scaled_dot_product_attention(q, k, v)
         i_embed = i_embed.squeeze(-2).squeeze(-2)  # (batch_size, n , d) or (batch_size, d)
 
         # Compute similarity
@@ -227,6 +261,50 @@ class CrossAttentionQueryMatching(BaseQueryMatchingModel):
         preds = torch.sum(u_trans * i_embed, dim=-1)  # (batch_size) or (batch_size, n_neg)
 
         return preds
+
+    def predict_weight_and_score(self, q_idxs: torch.Tensor, q_text: torch.Tensor, u_idxs: torch.Tensor,
+                                 i_idxs: torch.Tensor):
+        """
+        Returns the score of the model for a batch of data in the format weight * score.
+        NB. i_idxs should be a 2D tensor.
+        returns
+            scores: (batch_size, n_mods)
+            weights: (batch_size, n_mods)
+        """
+
+        assert i_idxs.ndim == 2, f"Expected 2D tensor, got {i_idxs.ndim}D"
+
+        # Encode the queries
+        q_embed = self.query_encoder(q_text)  # (batch_size, d)
+
+        # Encode the users
+        u_embed = self.user_encoder(u_idxs)  # (batch_size, d)
+
+        # User translation
+        u_trans = q_embed + u_embed  # (batch_size, d)
+
+        # Encode the items
+        i_mods_embeds = torch.stack([i_mod_encoder(i_idxs) for i_mod_encoder in self.item_encoders.values()])
+        i_mods_embeds = i_mods_embeds.to(q_embed.device)  # (n_mods, batch_size, d)
+
+        # Cross Attention
+        q = self.w_q(q_text)  # (batch_size, d)
+        k = torch.stack([w_k(i_idxs) for w_k in self.w_k.values()])
+        k = k.to(q.device)  # (n_mods, batch_size, d)
+
+        # Attention weight (looking at the implementation
+        # https://pytorch.org/docs/stable/generated/torch.nn.functional.scaled_dot_product_attention.html)
+        scale_factor = 1 / math.sqrt(self.d)
+        weights = torch.sum(q * k, dim=-1) * scale_factor  # (n_mods, batch_size)
+        weights = torch.softmax(weights, dim=0)  # (n_mods, batch_size)
+
+        # Computing per-modality scores
+        scores = torch.sum(u_trans * i_mods_embeds, dim=-1)  # (n_mods, batch_size)
+
+        scores = scores.T
+        weights = weights.T
+
+        return scores, weights
 
     @staticmethod
     def build_from_conf(conf: dict, dataset: Dataset, feature_holder: FeatureHolder):
