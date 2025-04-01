@@ -1,9 +1,11 @@
 import logging
+import math
 
 import torch
-from datasets import Dataset
+import torch.nn.functional as F
 from einops import rearrange
 from torch import nn
+from torch.utils.data import Dataset
 
 from algorithms.base import BaseQueryMatchingModel
 from data.feature import FeatureHolder

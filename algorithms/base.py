@@ -3,8 +3,8 @@ import os
 from abc import ABC, abstractmethod
 
 import torch
-from datasets import Dataset
 from torch import nn
+from torch.utils.data import Dataset
 
 from data.feature import FeatureHolder
 
