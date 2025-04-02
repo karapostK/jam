@@ -13,3 +13,4 @@ class AlgorithmsEnum(Enum):
     crossmatching = CrossAttentionQueryMatching
     sparsematching = SparseMoEQueryMatching
     talkrec = TalkingToYourRecSys
+    twotower = TwoTowerModel

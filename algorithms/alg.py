@@ -644,7 +644,7 @@ class TalkingToYourRecSys(BaseQueryMatchingModel):
         i_mods_embeds = torch.cat([q_embed, i_mods_embeds], dim=0)
         # (n_mods+1, batch_size, d) or (n_mods+1, batch_size, n_neg, d)
 
-        self._logging_names = ['query'] + i_feat_names # just for logging purposes
+        self._logging_names = ['query'] + i_feat_names  # just for logging purposes
 
         # Normalizing for cosine similarity
         i_mods_embeds = F.normalize(i_mods_embeds, p=2, dim=-1)
@@ -724,4 +724,104 @@ class TalkingToYourRecSys(BaseQueryMatchingModel):
             item_features=feature_holder.item_features,
             dropout_p=conf['dropout_p'],
             temperature=conf['temperature']
+        )
+
+
+class TwoTowerModel(BaseQueryMatchingModel):
+    """
+    Encodes users and queries with a classic two-tower model.
+    Similar to https://roegen-recsys2024.github.io/papers/recsys2024-workshops_paper_208.pdf by Tekle et al.
+
+    # Modelling u
+    Encoder followed by NN layers
+
+    # Modelling i
+    Each modality is concatenated and followed by NN layers
+
+    NB. Query is not used.
+    """
+
+    def __init__(self, n_users: int, n_items: int, nn_layers: list[int], user_features: dict,
+                 item_features: dict):
+        """
+        :param nn_layers: List of integers representing the layers of the NN. Last layer is output layer.
+        """
+        super().__init__(n_users, n_items)
+        assert len(nn_layers) > 0, "Expected at least one layer"
+
+        self.nn_layers = nn_layers
+
+        # User Encoder #
+        pre_train_u_embed = torch.FloatTensor(user_features['cf'])
+        layers = [nn.Embedding.from_pretrained(pre_train_u_embed, freeze=True)]
+        previous_d = pre_train_u_embed.shape[1]
+        for i, d in enumerate(nn_layers):
+            layers.append(nn.Linear(previous_d, d))
+            previous_d = d
+            if i != len(nn_layers) - 1:
+                layers.append(nn.ReLU())
+        self.user_tower = nn.Sequential(*layers)
+
+        # Item Encoders #
+        # NB. Item encoder should be called before the item tower
+        self.item_encoders = nn.ModuleDict()
+        init_embd_size = 0
+        for i_feat_name, i_feat_embeds in item_features.items():
+            pre_train_i_embeds = torch.FloatTensor(i_feat_embeds)
+            init_embd_size += pre_train_i_embeds.shape[1]
+            self.item_encoders[i_feat_name] = nn.Embedding.from_pretrained(pre_train_i_embeds, freeze=True)
+
+        layers = []
+        previous_d = init_embd_size
+        for i, d in enumerate(nn_layers):
+            layers.append(nn.Linear(previous_d, d))
+            previous_d = d
+            if i != len(nn_layers) - 1:
+                layers.append(nn.ReLU())
+        self.item_tower = nn.Sequential(*layers)
+
+        # Init the model #
+        self.user_tower.apply(general_weight_init)
+        self.item_tower.apply(general_weight_init)
+
+        logging.info("Built TwoTowerModel \n"
+                     f"n_users: {self.n_users} \n"
+                     f"n_items: {self.n_items} \n"
+                     f"nn_layers: {self.nn_layers} \n"
+                     f"user_features: {user_features.keys()} \n"
+                     f"item_features: {item_features.keys()} \n")
+
+        logging.info(f"Parameters count: {sum(p.numel() for p in self.parameters())}")
+        logging.info(f"Trainable Parameters count: {sum(p.numel() for p in self.parameters() if p.requires_grad)}")
+
+    def forward(self, q_idxs: torch.Tensor, q_text: torch.Tensor, u_idxs: torch.Tensor,
+                i_idxs: torch.Tensor) -> torch.Tensor:
+
+        # Encode the users
+        u_embed = self.user_tower(u_idxs)  # (batch_size, d)
+
+        # Encode the items
+        i_mods_embeds = torch.cat([i_mod_encoder(i_idxs) for i_mod_encoder in self.item_encoders.values()], dim=-1)
+        i_mods_embeds = i_mods_embeds.to(u_idxs.device)  # (batch_size, sum(d)) or # (batch_size, n_neg, sum(d))
+
+        i_embed = self.item_tower(i_mods_embeds)  # (batch_size, d) or # (batch_size, n_neg, d)
+
+        # Compute similarity
+        if len(i_embed.shape) == 3:
+            # In case we have n_neg or n_items
+            u_embed = u_embed.unsqueeze(1)
+
+        preds = torch.sum(u_embed * i_embed, dim=-1)  # (batch_size) or (batch_size, n_neg)
+
+        return preds
+
+    @staticmethod
+    def build_from_conf(conf: dict, dataset: Dataset, feature_holder: FeatureHolder):
+
+        return TwoTowerModel(
+            n_users=dataset.n_users,
+            n_items=dataset.n_items,
+            nn_layers=conf['nn_layers'],
+            user_features=feature_holder.user_features,
+            item_features=feature_holder.item_features,
         )
