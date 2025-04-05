@@ -14,3 +14,5 @@ class AlgorithmsEnum(Enum):
     sparsematching = SparseMoEQueryMatching
     talkrec = TalkingToYourRecSys
     twotower = TwoTowerModel
+    pop = PopItems
+    random = RandomItems

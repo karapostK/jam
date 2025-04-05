@@ -12,6 +12,100 @@ from data.feature import FeatureHolder
 from utilities.train_utils import general_weight_init
 
 
+class RandomItems(BaseQueryMatchingModel):
+    """
+    Returns random items
+    """
+
+    def __init__(self, n_users: int, n_items: int):
+        super().__init__(n_users, n_items)
+
+        # Used for compatibility with the Trainer
+        self.dummy_param = nn.Parameter(torch.zeros(1, requires_grad=True))
+
+        logging.info("Built RandomItems \n"
+                     f"n_users: {self.n_users} \n"
+                     f"n_items: {self.n_items} \n")
+
+        logging.info(f"Parameters count: {sum(p.numel() for p in self.parameters())}")
+        logging.info(f"Trainable Parameters count: {sum(p.numel() for p in self.parameters() if p.requires_grad)}")
+
+    def forward(self, q_idxs: torch.Tensor, q_text: torch.Tensor, u_idxs: torch.Tensor,
+                i_idxs: torch.Tensor) -> torch.Tensor:
+        # No real executing here
+        return i_idxs
+
+    def predict_all(self, q_idxs: torch.Tensor, q_text: torch.Tensor, u_idxs: torch.Tensor) -> torch.Tensor:
+        batch_size = q_idxs.shape[0]
+        return torch.randn((batch_size, self.n_items), device=q_idxs.device)
+
+    def compute_loss(self, pos_preds: torch.Tensor, neg_preds: torch.Tensor) -> dict:
+        # No real loss is computed
+        return {
+            'loss': torch.zeros(1, device=pos_preds.device, requires_grad=True)
+        }
+
+    @staticmethod
+    def build_from_conf(conf: dict, dataset: Dataset, feature_holder: FeatureHolder):
+        return RandomItems(n_users=dataset.n_users,
+                           n_items=dataset.n_items)
+
+
+class PopItems(BaseQueryMatchingModel):
+    """
+    Always returns the most popular items regardless of user or query.
+    """
+
+    def __init__(self, n_users: int, n_items: int):
+        super().__init__(n_users, n_items)
+
+        # Used for compatibility with the Trainer
+        self.dummy_param = nn.Parameter(torch.zeros(1, requires_grad=True))
+
+        self.register_buffer('counter', torch.zeros(n_items, dtype=torch.float))
+
+        logging.info("Built PopItems \n"
+                     f"n_users: {self.n_users} \n"
+                     f"n_items: {self.n_items} \n")
+
+        logging.info(f"Parameters count: {sum(p.numel() for p in self.parameters())}")
+        logging.info(f"Trainable Parameters count: {sum(p.numel() for p in self.parameters() if p.requires_grad)}")
+
+    def forward(self, q_idxs: torch.Tensor, q_text: torch.Tensor, u_idxs: torch.Tensor,
+                i_idxs: torch.Tensor) -> torch.Tensor:
+        self.counter = self.counter.to(i_idxs.device)
+
+        if i_idxs.ndim == 1:
+            # Using positive items as Training Data
+            self.counter.index_add_(0, i_idxs, torch.ones_like(i_idxs, dtype=torch.float))
+
+        return self.counter[i_idxs]
+
+    def predict_all(self, q_idxs: torch.Tensor, q_text: torch.Tensor, u_idxs: torch.Tensor) -> torch.Tensor:
+        self.counter = self.counter.to(q_idxs.device)
+
+        self.counter = F.normalize(self.counter, p=1, dim=0)
+        # PS. Normalizing allows the model to work even after many epochs.
+        # PPS. Except extreme drifting of the values
+
+        # Manual Broadcasting
+        preds = self.counter.unsqueeze(0)
+        batch_size = q_idxs.shape[0]
+
+        return preds.repeat(batch_size, 1)
+
+    def compute_loss(self, pos_preds: torch.Tensor, neg_preds: torch.Tensor) -> dict:
+        # No real loss is computed
+        return {
+            'loss': torch.zeros(1, device=pos_preds.device, requires_grad=True)
+        }
+
+    @staticmethod
+    def build_from_conf(conf: dict, dataset: Dataset, feature_holder: FeatureHolder):
+        return PopItems(n_users=dataset.n_users,
+                        n_items=dataset.n_items)
+
+
 class AverageQueryMatching(BaseQueryMatchingModel):
     """
     Simple Model for Query Matching.
