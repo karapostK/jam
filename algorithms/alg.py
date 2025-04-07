@@ -30,14 +30,13 @@ class RandomItems(BaseQueryMatchingModel):
         logging.info(f"Parameters count: {sum(p.numel() for p in self.parameters())}")
         logging.info(f"Trainable Parameters count: {sum(p.numel() for p in self.parameters() if p.requires_grad)}")
 
-    def forward(self, q_idxs: torch.Tensor, q_text: torch.Tensor, u_idxs: torch.Tensor,
-                i_idxs: torch.Tensor) -> torch.Tensor:
+    def forward(self, q_text: torch.Tensor, u_idxs: torch.Tensor, i_idxs: torch.Tensor) -> torch.Tensor:
         # No real executing here
         return i_idxs
 
-    def predict_all(self, q_idxs: torch.Tensor, q_text: torch.Tensor, u_idxs: torch.Tensor) -> torch.Tensor:
-        batch_size = q_idxs.shape[0]
-        return torch.randn((batch_size, self.n_items), device=q_idxs.device)
+    def predict_all(self, q_text: torch.Tensor, u_idxs: torch.Tensor) -> torch.Tensor:
+        batch_size = q_text.shape[0]
+        return torch.randn((batch_size, self.n_items), device=q_text.device)
 
     def compute_loss(self, pos_preds: torch.Tensor, neg_preds: torch.Tensor) -> dict:
         # No real loss is computed
@@ -71,8 +70,7 @@ class PopItems(BaseQueryMatchingModel):
         logging.info(f"Parameters count: {sum(p.numel() for p in self.parameters())}")
         logging.info(f"Trainable Parameters count: {sum(p.numel() for p in self.parameters() if p.requires_grad)}")
 
-    def forward(self, q_idxs: torch.Tensor, q_text: torch.Tensor, u_idxs: torch.Tensor,
-                i_idxs: torch.Tensor) -> torch.Tensor:
+    def forward(self, q_text: torch.Tensor, u_idxs: torch.Tensor, i_idxs: torch.Tensor) -> torch.Tensor:
         self.counter = self.counter.to(i_idxs.device)
 
         if i_idxs.ndim == 1:
@@ -81,8 +79,8 @@ class PopItems(BaseQueryMatchingModel):
 
         return self.counter[i_idxs]
 
-    def predict_all(self, q_idxs: torch.Tensor, q_text: torch.Tensor, u_idxs: torch.Tensor) -> torch.Tensor:
-        self.counter = self.counter.to(q_idxs.device)
+    def predict_all(self, q_text: torch.Tensor, u_idxs: torch.Tensor) -> torch.Tensor:
+        self.counter = self.counter.to(q_text.device)
 
         self.counter = F.normalize(self.counter, p=1, dim=0)
         # PS. Normalizing allows the model to work even after many epochs.
@@ -90,7 +88,7 @@ class PopItems(BaseQueryMatchingModel):
 
         # Manual Broadcasting
         preds = self.counter.unsqueeze(0)
-        batch_size = q_idxs.shape[0]
+        batch_size = q_text.shape[0]
 
         return preds.repeat(batch_size, 1)
 
@@ -166,7 +164,7 @@ class AverageQueryMatching(BaseQueryMatchingModel):
         logging.info(f"Parameters count: {sum(p.numel() for p in self.parameters())}")
         logging.info(f"Trainable Parameters count: {sum(p.numel() for p in self.parameters() if p.requires_grad)}")
 
-    def forward(self, q_idxs: torch.Tensor, q_text: torch.Tensor, u_idxs: torch.Tensor,
+    def forward(self, q_text: torch.Tensor, u_idxs: torch.Tensor,
                 i_idxs: torch.Tensor) -> torch.Tensor:
 
         # Encode the queries
@@ -193,7 +191,7 @@ class AverageQueryMatching(BaseQueryMatchingModel):
 
         return preds
 
-    def predict_weight_and_score(self, q_idxs: torch.Tensor, q_text: torch.Tensor, u_idxs: torch.Tensor,
+    def predict_weight_and_score(self, q_text: torch.Tensor, u_idxs: torch.Tensor,
                                  i_idxs: torch.Tensor):
         """
         Returns the score of the model for a batch of data in the format weight * score.
@@ -308,7 +306,7 @@ class CrossAttentionQueryMatching(BaseQueryMatchingModel):
         logging.info(f"Parameters count: {sum(p.numel() for p in self.parameters())}")
         logging.info(f"Trainable Parameters count: {sum(p.numel() for p in self.parameters() if p.requires_grad)}")
 
-    def forward(self, q_idxs: torch.Tensor, q_text: torch.Tensor, u_idxs: torch.Tensor,
+    def forward(self, q_text: torch.Tensor, u_idxs: torch.Tensor,
                 i_idxs: torch.Tensor) -> torch.Tensor:
 
         # Encode the queries
@@ -356,7 +354,7 @@ class CrossAttentionQueryMatching(BaseQueryMatchingModel):
 
         return preds
 
-    def predict_weight_and_score(self, q_idxs: torch.Tensor, q_text: torch.Tensor, u_idxs: torch.Tensor,
+    def predict_weight_and_score(self, q_text: torch.Tensor, u_idxs: torch.Tensor,
                                  i_idxs: torch.Tensor):
         """
         Returns the score of the model for a batch of data in the format weight * score.
@@ -499,7 +497,7 @@ class SparseMoEQueryMatching(BaseQueryMatchingModel):
         logging.info(f"Parameters count: {sum(p.numel() for p in self.parameters())}")
         logging.info(f"Trainable Parameters count: {sum(p.numel() for p in self.parameters() if p.requires_grad)}")
 
-    def forward(self, q_idxs: torch.Tensor, q_text: torch.Tensor, u_idxs: torch.Tensor,
+    def forward(self, q_text: torch.Tensor, u_idxs: torch.Tensor,
                 i_idxs: torch.Tensor) -> torch.Tensor:
 
         # Encode the queries
@@ -582,7 +580,7 @@ class SparseMoEQueryMatching(BaseQueryMatchingModel):
             top_k=conf['top_k']
         )
 
-    def predict_weight_and_score(self, q_idxs: torch.Tensor, q_text: torch.Tensor, u_idxs: torch.Tensor,
+    def predict_weight_and_score(self, q_text: torch.Tensor, u_idxs: torch.Tensor,
                                  i_idxs: torch.Tensor):
 
         assert i_idxs.ndim == 2, f"Expected 2D tensor, got {i_idxs.ndim}D"
@@ -700,8 +698,7 @@ class TalkingToYourRecSys(BaseQueryMatchingModel):
         logging.info(f"Parameters count: {sum(p.numel() for p in self.parameters())}")
         logging.info(f"Trainable Parameters count: {sum(p.numel() for p in self.parameters() if p.requires_grad)}")
 
-    def forward(self, q_idxs: torch.Tensor, q_text: torch.Tensor, u_idxs: torch.Tensor,
-                i_idxs: torch.Tensor) -> torch.Tensor:
+    def forward(self, q_text: torch.Tensor, u_idxs: torch.Tensor, i_idxs: torch.Tensor) -> torch.Tensor:
 
         """
         :return: Item embeddings for each modality . Shape is (n_mods+1, batch_size, d) or (n_mods+1, batch_size, n_neg, d)
@@ -745,12 +742,12 @@ class TalkingToYourRecSys(BaseQueryMatchingModel):
 
         return i_mods_embeds
 
-    def predict_all(self, q_idxs: torch.Tensor, q_text: torch.Tensor, u_idxs: torch.Tensor) -> torch.Tensor:
+    def predict_all(self, q_text: torch.Tensor, u_idxs: torch.Tensor) -> torch.Tensor:
         # All item indexes
-        i_idxs = torch.arange(self.n_items).to(q_idxs.device)
+        i_idxs = torch.arange(self.n_items).to(q_text.device)
         i_idxs = i_idxs.unsqueeze(0)  # (1, n_items) -> Allowing broadcasting over batch_size
 
-        reprs = self.forward(q_idxs, q_text, u_idxs, i_idxs)  # (n_mods+1, batch_size, n_items, d)
+        reprs = self.forward(q_text, u_idxs, i_idxs)  # (n_mods+1, batch_size, n_items, d)
 
         q_embed = reprs[0]  # (batch_size, n_items, d)
         i_embeds = reprs[1:]  # (n_mods, batch_size, n_items, d)
@@ -889,7 +886,7 @@ class TwoTowerModel(BaseQueryMatchingModel):
         logging.info(f"Parameters count: {sum(p.numel() for p in self.parameters())}")
         logging.info(f"Trainable Parameters count: {sum(p.numel() for p in self.parameters() if p.requires_grad)}")
 
-    def forward(self, q_idxs: torch.Tensor, q_text: torch.Tensor, u_idxs: torch.Tensor,
+    def forward(self, q_text: torch.Tensor, u_idxs: torch.Tensor,
                 i_idxs: torch.Tensor) -> torch.Tensor:
 
         # Encode the users

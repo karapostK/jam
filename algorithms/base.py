@@ -21,12 +21,11 @@ class BaseQueryMatchingModel(ABC, nn.Module):
         self.n_items = n_items
 
     @abstractmethod
-    def forward(self, q_idxs: torch.Tensor, q_text: torch.Tensor, u_idxs: torch.Tensor, i_idxs: torch.Tensor) -> torch.Tensor:
+    def forward(self, q_text: torch.Tensor, u_idxs: torch.Tensor, i_idxs: torch.Tensor) -> torch.Tensor:
         """
         Predicts the affinity scores between (u,q) and i.
         NB. it can consider also negative sampling!
 
-        :param q_idxs:  Query indexes. Shape is (batch_size,)
         :param q_text:  Query text embedded. Shape is (batch_size, lang_dim). Where lang_dim is the language model dimension
         :param u_idxs:  User indexes. Shape is (batch_size,)
         :param i_idxs: Item indexes. Shape is (batch_size,) or (batch_size, n_neg) or (batch_size, n_items)
@@ -34,11 +33,10 @@ class BaseQueryMatchingModel(ABC, nn.Module):
             preds: Predicted scores. Shape is (batch_size,) or (batch_size, neg) or (batch_size, n_items)
         """
 
-    def predict_all(self, q_idxs: torch.Tensor, q_text: torch.Tensor, u_idxs: torch.Tensor) -> torch.Tensor:
+    def predict_all(self, q_text: torch.Tensor, u_idxs: torch.Tensor) -> torch.Tensor:
         """
         Predicts the affinity scores between (u,q) and all items.
 
-        :param q_idxs:  Query indexes. Shape is (batch_size,)
         :param q_text:  Query text embedded. Shape is (batch_size, lang_dim). Where lang_dim is the language model dimension
         :param u_idxs:  User indexes. Shape is (batch_size,)
         :return:
@@ -46,10 +44,10 @@ class BaseQueryMatchingModel(ABC, nn.Module):
         """
 
         # All item indexes
-        i_idxs = torch.arange(self.n_items).to(q_idxs.device)
+        i_idxs = torch.arange(self.n_items).to(q_text.device)
         i_idxs = i_idxs.unsqueeze(0)  # (1, n_items) -> Allowing broadcasting over batch_size
 
-        return self.forward(q_idxs, q_text, u_idxs, i_idxs)
+        return self.forward(q_text, u_idxs, i_idxs)
 
     def compute_loss(self, pos_preds: torch.Tensor, neg_preds: torch.Tensor) -> dict:
         """
