@@ -23,9 +23,7 @@ def get_dataloader(conf: dict, split_set: str) -> DataLoader:
                     batch, train_dataset.query2itemsSet,
                     train_dataset.n_items,
                     n_negs=conf['neg_train']
-                ),
-                prefetch_factor=conf['running_settings']['prefetch_factor'] if 'prefetch_factor' in conf[
-                    'running_settings'] else 2  # todo: throws an error when n_workers=0
+                )
             )
 
             logging.info(f"Built Train DataLoader module \n"

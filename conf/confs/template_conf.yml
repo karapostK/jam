@@ -18,7 +18,7 @@ language_model:
   tokenizer_name: "answerdotai/ModernBERT-base"                 # Tokenizer name for pre-processing of the queries
   model_name: "answerdotai/ModernBERT-base"                     # Model name for the language model
   device: cuda                                                  # Device where to send the model and batches
-  max_length: 100                                               # Max length of the queries
+  max_length: 38                                                # Max length of the queries
   batch_size: 2000                                              # Batch size for the language model
   hidden_size: 768                                              # Hidden size of the language model
 
@@ -28,7 +28,6 @@ device: cuda                                                    # Device where t
 running_settings:
   train_n_workers: 5                                            # # of workers for the train dataloader
   eval_n_workers: 5                                             # # of workers for the eval dataloader
-  #prefetch_factor: 2
   batch_verbose: False                                          # Whether to use tqdm over batches
 
 # Likely, you don't need to change these:
