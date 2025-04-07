@@ -1,11 +1,13 @@
 import argparse
+import json
 import logging
+import os.path
 
 import numpy as np
 
 from constants.enums import AlgorithmsEnum, DatasetsEnum
 from experiment_helper import run_test
-from utilities.utils import fetch_bests_in_sweep
+from utilities.utils import fetch_bests_in_sweep, print_latex_line
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Start a test experiment for a sweep')
@@ -54,3 +56,11 @@ if __name__ == '__main__':
     for metric, values in mean_std_results:
         print(f'{metric}: {values["mean"]:.4f} ± {values["std"]:.4f}')
     print('--------------------------------')
+    print('--------------------------------')
+
+    print_latex_line(dict(mean_std_results), run_confs[0]['alg'])
+
+    # Saving the results as dictionary in a json file
+    sweep_path = os.path.dirname(run_confs[0]['model_path'])
+    with open(os.path.join(sweep_path, 'final_test_results.json'), 'w') as f:
+        json.dump(dict(mean_std_results), f)

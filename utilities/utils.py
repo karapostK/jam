@@ -61,7 +61,7 @@ def fetch_bests_in_sweep(sweep_id, project_base_directory: str = '.'):
         # Generating the key of the run based on the hyperparameters #
         run_key = []
         for key in hps_keys:
-            run_key.append(run.config[key])
+            run_key.append(run.config[key] if not isinstance(run.config[key], list) else tuple(run.config[key]))
         run_key = tuple(run_key)
 
         hps2max[run_key].append(run.summary['max_optimizing_metric'])
@@ -105,6 +105,22 @@ def fetch_bests_in_sweep(sweep_id, project_base_directory: str = '.'):
 
     # Returns the configs
     return [run.config for run in best_runs], best_hps
+
+
+def print_latex_line(mean_std_results: dict, method_name: str):
+    # Printing line for the latex table
+    metrics_for_table = ['recall@10', 'recall@100', 'ndcg@10', 'ndcg@100']
+
+    def format_latex(mean, std):
+        return f"${str(f'{mean:.3f}').lstrip('0')}_{{{str(f'{std:.3f}').lstrip('0')}}}$"
+
+    # Build the LaTeX line
+    latex_line = f" {method_name} & " + " & ".join([
+        format_latex(mean_std_results[metric]['mean'], mean_std_results[metric]['std'])
+        for metric in metrics_for_table
+    ]) + r" \\"
+
+    print(latex_line)
 
 
 if __name__ == '__main__':
