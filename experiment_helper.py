@@ -82,6 +82,8 @@ def run_test(alg: AlgorithmsEnum, dataset: DatasetsEnum, conf: typing.Union[str,
         wandb.log(metrics_values, step=0)
         wandb.finish()
 
+    return metrics_values
+
 
 def run_train_val_test(alg: AlgorithmsEnum, dataset: DatasetsEnum, conf_path: str):
     print('Starting Train-Val-Test')
