@@ -3,6 +3,7 @@ from collections import defaultdict
 
 import torch
 import wandb
+from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils import data
 from tqdm import trange, tqdm
 
@@ -43,6 +44,7 @@ class Trainer:
             'adamw': torch.optim.AdamW
         }
         self.optimizer = opt_map[conf['optimizer']](self.model.parameters(), lr=self.lr, weight_decay=self.wd)
+        self.scheduler = CosineAnnealingLR(self.optimizer, T_max=conf['n_epochs'])
 
         self.n_epochs = conf['n_epochs']
         self.optimizing_metric = conf['optimizing_metric']
@@ -120,6 +122,9 @@ class Trainer:
                 self.optimizer.step()
                 self.optimizer.zero_grad()
 
+            epoch_lr = self.scheduler.get_last_lr()[0]
+            self.scheduler.step()
+
             epoch_losses = {k: v / len(self.train_loader) for k, v in epoch_losses.items()}
 
             loss_info = ' - '.join(f'{k}: {v:.4f}' for k, v in epoch_losses.items())
@@ -145,7 +150,7 @@ class Trainer:
                 current_patience -= 1
 
             # --  Logging -- #
-            log_dict = {**metrics_values, **epoch_losses}
+            log_dict = {**metrics_values, **epoch_losses, 'lr': epoch_lr}
 
             if self.use_wandb:
                 wandb.log(log_dict)
