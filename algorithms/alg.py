@@ -850,7 +850,8 @@ class TwoTowerModel(BaseQueryMatchingModel):
             layers.append(nn.Linear(previous_d, d))
             previous_d = d
             if i != len(nn_layers) - 1:
-                layers.append(nn.ReLU())
+                layers.append(nn.LayerNorm(d, elementwise_affine=False))
+                layers.append(nn.GELU())
         self.user_tower = nn.Sequential(*layers)
 
         # Item Encoders #
