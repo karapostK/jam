@@ -1,5 +1,5 @@
 program: sweep_agent.py
-name: pop
+name: final_pop
 project: jam
 method: grid
 entity: karapost

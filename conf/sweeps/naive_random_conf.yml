@@ -1,5 +1,5 @@
 program: sweep_agent.py
-name: random
+name: final_random
 project: jam
 method: grid
 entity: karapost

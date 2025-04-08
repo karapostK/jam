@@ -1,5 +1,5 @@
 program: sweep_agent.py
-name: avgmatching
+name: final_avgmatching
 project: jam
 method: grid
 entity: karapost

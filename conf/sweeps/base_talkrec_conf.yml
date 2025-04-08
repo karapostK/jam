@@ -1,5 +1,5 @@
 program: sweep_agent.py
-name: talkrec
+name: final_talkrec
 project: jam
 method: grid
 entity: karapost

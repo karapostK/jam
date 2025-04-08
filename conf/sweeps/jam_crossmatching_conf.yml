@@ -1,5 +1,5 @@
 program: sweep_agent.py
-name: crossmatching
+name: final_crossmatching
 project: jam
 method: grid
 entity: karapost
