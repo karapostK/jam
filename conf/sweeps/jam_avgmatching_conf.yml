@@ -1,0 +1,86 @@
+program: sweep_agent.py
+name: avgmatching
+project: jam
+method: grid
+entity: karapost
+
+parameters:
+  #### Fixed Hyperparameters ####
+  data_path:
+    value: './data'
+  alg:
+    value: avgmatching
+  dataset:
+    value: deezermarch
+
+  # Model Parameters #
+
+  # Training Parameters #
+  n_epochs:
+    value: 50
+  neg_train:
+    value: 4
+  max_patience:
+    value: 10
+  wd:
+    value: 1e-1
+
+  # Optimization
+  optimizer:
+    value: 'adamw'
+
+  # Batch Sizes
+  train_batch_size:
+    value: 512
+  eval_batch_size:
+    value: 64
+
+  # Other
+  device:
+    value: cuda
+  running_settings:
+    parameters:
+      train_n_workers:
+        value: 4
+      eval_n_workers:
+        value: 4
+      batch_verbose:
+        value: False
+
+  #### Varying Hyperparameters ####
+
+  # Model Parameters #
+  d:
+    distribution: categorical
+    values:
+      - 64
+      - 128
+      - 512
+
+  # Training Parameters #
+  lr:
+    distribution: categorical
+    values:
+      - 1e-3
+      - 5e-4
+      - 3e-4
+  # Running Parameters #
+  seed:
+    distribution: categorical
+    values:
+      - 64
+      - 65
+      - 66
+
+
+
+
+
+
+
+
+
+
+
+
+

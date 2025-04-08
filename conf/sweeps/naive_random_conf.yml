@@ -1,0 +1,67 @@
+program: sweep_agent.py
+name: random
+project: jam
+method: grid
+entity: karapost
+
+parameters:
+  #### Fixed Hyperparameters ####
+  data_path:
+    value: './data'
+  alg:
+    value: random
+  dataset:
+    value: deezermarch
+
+  # Model Parameters #
+
+  # Training Parameters #
+  n_epochs:
+    value: 2
+
+  # Optimization
+  optimizer:
+    value: 'adamw'
+
+  # Batch Sizes
+  train_batch_size:
+    value: 512
+  eval_batch_size:
+    value: 32
+
+  # Other
+  device:
+    value: cuda
+  running_settings:
+    parameters:
+      train_n_workers:
+        value: 4
+      eval_n_workers:
+        value: 4
+      batch_verbose:
+        value: False
+
+  #### Varying Hyperparameters ####
+
+  # Model Parameters #
+  # Training Parameters #
+  # Running Parameters #
+  seed:
+    distribution: categorical
+    values:
+      - 64
+      - 65
+      - 66
+
+
+
+
+
+
+
+
+
+
+
+
+
