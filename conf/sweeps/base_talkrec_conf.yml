@@ -60,7 +60,7 @@ parameters:
     values:
       - 64
       - 128
-      - 256
+      - 512
   # Training Parameters #
   lr:
     distribution: categorical
