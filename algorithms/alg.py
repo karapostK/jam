@@ -500,24 +500,18 @@ class SparseMoEQueryMatching(BaseQueryMatchingModel):
     def forward(self, q_text: torch.Tensor, u_idxs: torch.Tensor,
                 i_idxs: torch.Tensor) -> torch.Tensor:
 
-        # Encode the queries
-        q_embed = self.query_encoder(q_text)  # (batch_size, d)
+        mod_weights = self.modality_weight(q_text, i_idxs)
+        mod_scores = self.modality_score(q_text, u_idxs, i_idxs)
 
-        # Encode the users
-        u_embed = self.user_encoder(u_idxs)  # (batch_size, d)
+        return torch.sum(mod_weights * mod_scores, dim=0)  # (batch_size) or (batch_size, n_neg)
 
-        # Encode the items
-        # Here a modality is considered a different expert
-        i_mods_embeds = torch.stack([i_mod_encoder(i_idxs) for i_mod_encoder in self.item_encoders.values()])
-        i_mods_embeds = i_mods_embeds.to(q_embed.device)  # (n_mods, batch_size, d) or # (n_mods, batch_size, n_neg, d)
-
-        # User translation
-        u_trans = q_embed + u_embed  # (batch_size, d)
+    def modality_weight(self, q_text: torch.Tensor, i_idxs: torch.Tensor):
 
         # Sparse MoE with Noisy Top-K Gating #
 
         # Computing left-side of H(x) in Eq. 4 https://arxiv.org/pdf/1701.06538
         # x is q.T @ k for each modality
+
         q_gate = self.h_q(q_text)  # (batch_size, d)
         k_gate = torch.stack([h_k(i_idxs) for h_k in self.h_k.values()])
         k_gate = k_gate.to(q_gate.device)  # (n_mods, batch_size, d) or # (n_mods, batch_size, n_neg, d)
@@ -525,23 +519,27 @@ class SparseMoEQueryMatching(BaseQueryMatchingModel):
         if i_idxs.dim() == 2:
             q_gate = q_gate.unsqueeze(1)
 
-        gate_activations = torch.sum(q_gate * k_gate, dim=-1)  # (n_mods, batch_size) or (n_mods, batch_size, n_neg)
+        h_qk = torch.sum(q_gate * k_gate, dim=-1)  # (n_mods, batch_size) or (n_mods, batch_size, n_neg)
 
-        # Computing right-side of H(x) in Eq. 4 https://arxiv.org/pdf/1701.06538
-        q_noise = self.noise_q(q_text)  # (batch_size, d)
-        k_noise = torch.stack([noise_k(i_idxs) for noise_k in self.noise_k.values()])
-        k_noise = k_noise.to(q_noise.device)  # (n_mods, batch_size, d) or # (n_mods, batch_size, n_neg, d)
+        if self.training:
+            # Noise is added only during training
 
-        if i_idxs.dim() == 2:
-            q_noise = q_noise.unsqueeze(1)
+            # Computing right-side of H(x) in Eq. 4 https://arxiv.org/pdf/1701.06538
+            q_noise = self.noise_q(q_text)  # (batch_size, d)
+            k_noise = torch.stack([noise_k(i_idxs) for noise_k in self.noise_k.values()])
+            k_noise = k_noise.to(q_noise.device)  # (n_mods, batch_size, d) or # (n_mods, batch_size, n_neg, d)
 
-        noise_activations = torch.sum(q_noise * k_noise, dim=-1)  # (n_mods, batch_size) or (n_mods, batch_size, n_neg)
-        noise_stddev = F.softplus(noise_activations)  # (n_mods, batch_size) or (n_mods, batch_size, n_neg)
+            if i_idxs.dim() == 2:
+                q_noise = q_noise.unsqueeze(1)
 
-        # Putting H(x) together
+            noise_activations = torch.sum(q_noise * k_noise,
+                                          dim=-1)  # (n_mods, batch_size) or (n_mods, batch_size, n_neg)
+            noise_stddev = F.softplus(noise_activations)  # (n_mods, batch_size) or (n_mods, batch_size, n_neg)
 
-        # (n_mods, batch_size) or (n_mods, batch_size, n_neg)
-        h_qk = gate_activations + noise_stddev * torch.randn_like(noise_stddev)
+            # Putting H(x) together
+
+            h_qk = h_qk + noise_stddev * torch.randn_like(
+                noise_stddev)  # (n_mods, batch_size) or (n_mods, batch_size, n_neg)
 
         # Applying the top_k activation
         _, topk_idxs = torch.topk(h_qk, self.top_k, dim=0)
@@ -556,16 +554,33 @@ class SparseMoEQueryMatching(BaseQueryMatchingModel):
         # G(x) = Softmax(KeepTopK(H(x), k))
         gates = F.softmax(masked_h_qk, dim=0)  # (n_mods, batch_size) or (n_mods, batch_size, n_neg)
 
-        gated = torch.sum(gates.unsqueeze(-1) * i_mods_embeds, dim=0)  # (batch_size, d) or (batch_size, n_neg, d)
+        return gates
+
+    def modality_score(self, q_text: torch.Tensor, u_idxs: torch.Tensor,
+                       i_idxs: torch.Tensor) -> torch.Tensor:
+
+        # Encode the queries
+        q_embed = self.query_encoder(q_text)  # (batch_size, d)
+
+        # Encode the users
+        u_embed = self.user_encoder(u_idxs)  # (batch_size, d)
+
+        # User translation
+        u_trans = q_embed + u_embed  # (batch_size, d)
+
+        # Encode the items
+        # Here a modality is considered a different expert
+        i_mods_embeds = torch.stack([i_mod_encoder(i_idxs) for i_mod_encoder in self.item_encoders.values()])
+        i_mods_embeds = i_mods_embeds.to(q_embed.device)  # (n_mods, batch_size, d) or # (n_mods, batch_size, n_neg, d)
 
         # Compute similarity
         if i_idxs.dim() == 2:
             # In case we have n_neg or n_items
             u_trans = u_trans.unsqueeze(1)
 
-        preds = torch.sum(u_trans * gated, dim=-1)  # (batch_size) or (batch_size, n_neg)
+        scores = torch.sum(u_trans * i_mods_embeds, dim=-1)  # (n_mods, batch_size) or (n_mods, batch_size, n_neg)
 
-        return preds
+        return scores
 
     @staticmethod
     def build_from_conf(conf: dict, dataset: Dataset, feature_holder: FeatureHolder):
@@ -579,69 +594,6 @@ class SparseMoEQueryMatching(BaseQueryMatchingModel):
             item_features=feature_holder.item_features,
             top_k=conf['top_k']
         )
-
-    def predict_weight_and_score(self, q_text: torch.Tensor, u_idxs: torch.Tensor,
-                                 i_idxs: torch.Tensor):
-
-        assert i_idxs.ndim == 2, f"Expected 2D tensor, got {i_idxs.ndim}D"
-
-        # Encode the queries
-        q_embed = self.query_encoder(q_text)  # (batch_size, d)
-
-        # Encode the users
-        u_embed = self.user_encoder(u_idxs)  # (batch_size, d)
-
-        # Encode the items
-        # Here a modality is considered a different expert
-        i_mods_embeds = torch.stack([i_mod_encoder(i_idxs) for i_mod_encoder in self.item_encoders.values()])
-        i_mods_embeds = i_mods_embeds.to(q_embed.device)  # (n_mods, batch_size, d)
-
-        # User translation
-        u_trans = q_embed + u_embed  # (batch_size, d)
-
-        # Sparse MoE with Noisy Top-K Gating #
-
-        # Computing left-side of H(x) in Eq. 4 https://arxiv.org/pdf/1701.06538
-        # x is q.T @ k for each modality
-
-        q_gate = self.h_q(q_text)  # (batch_size, d)
-        k_gate = torch.stack([h_k(i_idxs) for h_k in self.h_k.values()])
-        k_gate = k_gate.to(q_gate.device)  # (n_mods, batch_size, d)
-
-        gate_activations = torch.sum(q_gate * k_gate, dim=-1)  # (n_mods, batch_size)
-
-        # Computing right-side of H(x) in Eq. 4 https://arxiv.org/pdf/1701.06538
-        q_noise = self.noise_q(q_text)  # (batch_size, d)
-        k_noise = torch.stack([noise_k(i_idxs) for noise_k in self.noise_k.values()])
-        k_noise = k_noise.to(q_noise.device)  # (n_mods, batch_size, d)
-
-        noise_activations = torch.sum(q_noise * k_noise, dim=-1)  # (n_mods, batch_size)
-        noise_stddev = F.softplus(noise_activations)  # (n_mods, batch_size)
-
-        # Putting H(x) together
-
-        h_qk = gate_activations + noise_stddev * torch.randn_like(noise_stddev)  # (n_mods, batch_size)
-
-        # Applying the top_k activation
-        _, topk_idxs = torch.topk(h_qk, self.top_k, dim=0)
-
-        # Creating mask
-        topk_mask = torch.zeros_like(h_qk, dtype=torch.bool)
-        topk_mask.scatter_(0, topk_idxs, True)
-
-        # Apply Mask
-        masked_h_qk = h_qk.masked_fill(~topk_mask, float('-inf'))
-
-        # G(x) = Softmax(KeepTopK(H(x), k))
-        weights = F.softmax(masked_h_qk, dim=0)  # (n_mods, batch_size)
-
-        # Computing per-modality scores
-        scores = torch.sum(u_trans * i_mods_embeds, dim=-1)  # (n_mods, batch_size)
-
-        scores = scores.T
-        weights = weights.T
-
-        return scores, weights
 
 
 class TalkingToYourRecSys(BaseQueryMatchingModel):
