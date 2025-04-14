@@ -127,6 +127,59 @@ Add your dataset to `DatasetsEnum` in `constants/enums.py`.
 
 NB. Codebase will look for the data in `os.path.join(conf['data_path'],<dataset_name>,'processed')`
 
+## Dataset
+
+Data | # of samples | Field in Dataset | Information 
+ --- |-------------|------------------|-------------|
+Query ID | 112,337     | query_idx        |                                        |
+Query | 112,337            | text             |
+User ID | 103,752     | user_idx         | 
+Playlist | 28,068            | item_idxs        | ISRC code of each item in the playlist 
+
+### Statistics
+
+The dataset provides information of 28,068 playlists consisting of 99,865 unique items matched with 112,337 unique queries of 103,752 users.
+
+### Retrieving Metadata of Songs
+
+With the ISRC it is possible to fetch metadata (song title and artist name) of each music track:
+
+```
+# Imports
+from bs4 import BeautifulSoup
+from urllib.request import Request, urlopen
+import re
+
+
+def get_metadata(id_isrc: str):
+    # Construct url to retrieve metadata.
+    url = f"https://musicbrainz.org/isrc/{id_isrc}"
+    
+    # Get html page.
+    req = Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+    html_page = urlopen(req).read()
+    soup = BeautifulSoup(html_page, 'html.parser')
+    
+    # Get data
+    song_title = "Undefined"
+    artist_name = "Undefined"
+    
+    try:
+        entry = soup.find_all(class_="odd")[0]
+        fields = entry.find_all(['td', 'th'])
+        data = [cell.get_text(strip=True) for cell in fields]
+        song_title = data[0]
+        artist_name = data[1]
+    except:
+        print("Error while retrieving data")
+     
+    return song_title, artist_name
+
+```
+
+
+
+
 ## Cite
 
 
