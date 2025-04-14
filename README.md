@@ -129,16 +129,16 @@ NB. Codebase will look for the data in `os.path.join(conf['data_path'],<dataset_
 
 ## Dataset
 
-Data | # of samples | Field in Dataset | Information 
- --- |-------------|------------------|-------------|
-Query ID | 112,337     | query_idx        |                                        |
-Query | 112,337            | text             |
-User ID | 103,752     | user_idx         | 
-Playlist | 28,068            | item_idxs        | ISRC code of each item in the playlist 
+Data | Unique # of samples | Field in Dataset | Information 
+ --- |---------------------|------------------|-------------|
+Query ID | 112,337             | query_idx        |                                        |
+Query | 112,337             | text             |
+User ID | 103,752             | user_idx         | 
+Playlist | 3,978               | item_idxs        | ISRC code of each item in the playlist 
 
 ### Statistics
 
-The dataset provides information of 28,068 playlists consisting of 99,865 unique items matched with 112,337 unique queries of 103,752 users.
+The dataset provides information of 3,978 playlists consisting of 99,865 unique items matched with 112,337 unique queries of 103,752 users.
 
 ### Retrieving Metadata of Songs
 
