@@ -179,7 +179,7 @@ def get_metadata(id_isrc: str):
 
 ### User Study for Generated Queries
 
-- We also performed a user survey to assess the quality of  300 generated user long queries in a Likert-5 scale (1:Strongly Dissagree, 2:Disagree, 3:Neutral, 4:Agree, 5:Strongly Agree). Each query was evaluated for 2 distinct survey participants.
+- We also performed a user survey to assess the quality of  300 generated user long queries in a Likert-5 scale (1:Strongly Dissagree, 2:Disagree, 3:Neutral, 4:Agree, 5:Strongly Agree). Each query was evaluated by 2 distinct survey participants.
     ![](assets/dist_ans.png)
     | Results        |              |
     |---------------|-------:|
