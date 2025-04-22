@@ -190,10 +190,11 @@ def get_metadata(id_isrc: str):
 -  The mean label value **3.54** indicates a positive perception of the quality of the generated queries.     
 
 - In order to assess the paired agreement of the labels, we performed an statistical significance test between the two groups of labels, namely, a t-test was performed assuming independant (`ttest_ind`) and related (`ttest_rel`) samples.
-    |**Test**      |`ttest_rel`|`ttest_ind`|
+    |**Test Results**      |`ttest_ind`|`ttest_rel`|
     |-------|:---------:|:---------:|
-    |**p-value**| 0.33|0.25 
-- With these p-values we are not able to reject the null hypotesis, therefore, the two label groups hold similar distributions.  
+    |*p-value*| 0.5095|0.3362 |
+    |*statistic*|0.6599  |0.9832 |
+- With the resulting p-values we are not able to reject the null hypotesis, therefore, the two label groups hold similar distributions.  
 <!-- {'total_labels': 600,
  'summary_answers': {'Strongly Disagree': 34,
                      'Disagree': 108,
