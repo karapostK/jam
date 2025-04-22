@@ -177,12 +177,23 @@ def get_metadata(id_isrc: str):
 
 ```
 
-### Generated queries quality survey
+### User Study for Generated Queries
 
-We also performed a user survey to assess the quality of  300 generated user long queries in a Likert-5 scale (1:Strongly Dissagree, 2:Disagree, 3:Neutral, 4:Agree, 5:Strongly Agree). Each query was evaluated for 2 distinct survey participants. We surveyed 15 unique participants that were allowed to evaluate 40 or more unique generated queries. As a result, we obtained 600 labels divided in two groups with a global mean/median/std of $3.5/4.0/1.17$ on their numerical values which indicates a positive perception of the quality of the generated queries.       
-![](assets/dist_ans.png)
-In order to assess the paired agreement of the labels, we performed an statistical significance test between the two groups of labels, namely, a t-test was performed assuming independant and related samples where we found that the two groups hold similar distributions indicated by 
-not being able to reject the null hypotesis (independant sample:$p=0.25$,  related sample:$p=0.33$).  
+- We also performed a user survey to assess the quality of  300 generated user long queries in a Likert-5 scale (1:Strongly Dissagree, 2:Disagree, 3:Neutral, 4:Agree, 5:Strongly Agree). Each query was evaluated for 2 distinct survey participants.
+    ![](assets/dist_ans.png)
+    | Results        |              |
+    |---------------|-------:|
+    | Unique Participants | 15
+    | Total Labels | 600 |
+    | Numeric Label (mean / std / median)| 3.54 / 4.0 / 1.17 |
+  
+-  The mean label value **3.54** indicates a positive perception of the quality of the generated queries.     
+
+- In order to assess the paired agreement of the labels, we performed an statistical significance test between the two groups of labels, namely, a t-test was performed assuming independant (`ttest_ind`) and related (`ttest_rel`) samples.
+    |**Test**      |`ttest_rel`|`ttest_ind`|
+    |-------|:---------:|:---------:|
+    |**p-value**| 0.33|0.25 
+- With these p-values we are not able to reject the null hypotesis, therefore, the two label groups hold similar distributions.  
 <!-- {'total_labels': 600,
  'summary_answers': {'Strongly Disagree': 34,
                      'Disagree': 108,
