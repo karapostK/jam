@@ -177,7 +177,24 @@ def get_metadata(id_isrc: str):
 
 ```
 
+### Generated queries quality survey
 
+We also performed a user survey to assess the quality of the 300 generated user long queries. Each query was evaluated for 2 distinct survey participants. We surveyed 15 unique participants that were allowed to evaluate 40 or more unique generated queries. As a result, we obtained 600 labels divided in two groups with a global average of $3.5$ which indicates that the quality of the generated queries are positively perceived.       
+![](assets/dist_ans.png)
+In order to assess the paired agreement of the labels, we performed an statistical significance test between the two groups of labels, namely, a t-test 
+was performed where we found that the two groups hold similar distributions indicated by 
+not being able to reject the null hypotesis ($p=0.33$).  
+<!-- {'total_labels': 600,
+ 'summary_answers': {'Strongly Disagree': 34,
+                     'Disagree': 108,
+                     'Neutral': 84,
+                     'Agree': 245,
+                     'Strongly Agree': 129},
+ 'numeric_score': {'min': 1,
+                   'max': 5,
+                   'mean': '3.54',
+                   'std': '1.17',
+                   'median': '4.0'}} -->
 
 
 ## Cite
