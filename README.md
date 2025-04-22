@@ -179,11 +179,10 @@ def get_metadata(id_isrc: str):
 
 ### Generated queries quality survey
 
-We also performed a user survey to assess the quality of the 300 generated user long queries. Each query was evaluated for 2 distinct survey participants. We surveyed 15 unique participants that were allowed to evaluate 40 or more unique generated queries. As a result, we obtained 600 labels divided in two groups with a global average of $3.5$ which indicates that the quality of the generated queries are positively perceived.       
+We also performed a user survey to assess the quality of  300 generated user long queries in a Likert-5 scale (1:Strongly Dissagree, 2:Disagree, 3:Neutral, 4:Agree, 5:Strongly Agree). Each query was evaluated for 2 distinct survey participants. We surveyed 15 unique participants that were allowed to evaluate 40 or more unique generated queries. As a result, we obtained 600 labels divided in two groups with a global mean/median/std of $3.5/4.0/1.17$ on their numerical values which indicates a positive perception of the quality of the generated queries.       
 ![](assets/dist_ans.png)
-In order to assess the paired agreement of the labels, we performed an statistical significance test between the two groups of labels, namely, a t-test 
-was performed where we found that the two groups hold similar distributions indicated by 
-not being able to reject the null hypotesis ($p=0.33$).  
+In order to assess the paired agreement of the labels, we performed an statistical significance test between the two groups of labels, namely, a t-test was performed assuming independant and related samples where we found that the two groups hold similar distributions indicated by 
+not being able to reject the null hypotesis (independant sample:$p=0.25$,  related sample:$p=0.33$).  
 <!-- {'total_labels': 600,
  'summary_answers': {'Strongly Disagree': 34,
                      'Disagree': 108,
