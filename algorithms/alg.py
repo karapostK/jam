@@ -1,5 +1,4 @@
 import logging
-import math
 
 import torch
 import torch.nn.functional as F
@@ -167,39 +166,29 @@ class AverageQueryMatching(BaseQueryMatchingModel):
     def forward(self, q_text: torch.Tensor, u_idxs: torch.Tensor,
                 i_idxs: torch.Tensor) -> torch.Tensor:
 
-        mod_weights = self.modality_weight(q_text, i_idxs)
-        mod_scores = self.modality_score(q_text, u_idxs, i_idxs)
-
-        return torch.sum(mod_weights * mod_scores, dim=0)  # (batch_size) or (batch_size, n_neg)
-
-    def modality_weight(self, q_text: torch.Tensor, i_idxs: torch.Tensor):
-        n_mods = len(self.item_encoders)
-        weight_shape = (n_mods, *list(i_idxs.shape))
-        weights = torch.full(weight_shape, 1 / n_mods, device=i_idxs.device)  # Same as above
-        return weights
-
-    def modality_score(self, q_text: torch.Tensor, u_idxs: torch.Tensor,
-                       i_idxs: torch.Tensor) -> torch.Tensor:
         # Encode the queries
         q_embed = self.query_encoder(q_text)  # (batch_size, d)
 
         # Encode the users
         u_embed = self.user_encoder(u_idxs)  # (batch_size, d)
 
+        # Encode the items
+        i_mods_embeds = torch.stack([i_mod_encoder(i_idxs) for i_mod_encoder in self.item_encoders.values()])
+        i_mods_embeds = i_mods_embeds.to(q_embed.device)  # (n_mods, batch_size, d) or # (n_mods, batch_size, n_neg, d)
+
+        i_embed = i_mods_embeds.mean(dim=0)  # (batch_size, d) or (batch_size, n_neg, d)
+
         # User translation
         u_trans = q_embed + u_embed  # (batch_size, d)
 
-        # Encode the items
-        i_mods_embeds = torch.stack([i_mod_encoder(i_idxs) for i_mod_encoder in self.item_encoders.values()])
-        i_mods_embeds = i_mods_embeds.to(q_embed.device)  # (n_mods, batch_size, d) or (n_mods, batch_size, n_neg, d)
-
         # Compute similarity
-        if i_idxs.dim() == 2:
+        if len(i_embed.shape) == 3:
             # In case we have n_neg or n_items
             u_trans = u_trans.unsqueeze(1)
 
-        scores = torch.sum(u_trans * i_mods_embeds, dim=-1)  # (n_mods, batch_size) or (n_mods, batch_size, n_neg)
-        return scores
+        preds = torch.sum(u_trans * i_embed, dim=-1)  # (batch_size) or (batch_size, n_neg)
+
+        return preds
 
     @staticmethod
     def build_from_conf(conf: dict, dataset: Dataset, feature_holder: FeatureHolder):
@@ -285,96 +274,50 @@ class CrossAttentionQueryMatching(BaseQueryMatchingModel):
     def forward(self, q_text: torch.Tensor, u_idxs: torch.Tensor,
                 i_idxs: torch.Tensor) -> torch.Tensor:
 
-        mod_weights = self.modality_weight(q_text, i_idxs)
-        mod_scores = self.modality_score(q_text, u_idxs, i_idxs)
+        # Encode the queries
+        q_embed = self.query_encoder(q_text)  # (batch_size, d)
 
-        return torch.sum(mod_weights * mod_scores, dim=0)  # (batch_size) or (batch_size, n_neg)
+        # Encode the users
+        u_embed = self.user_encoder(u_idxs)  # (batch_size, d)
 
-    def modality_weight(self, q_text: torch.Tensor, i_idxs: torch.Tensor):
+        # Encode the items
+        i_mods_embeds = torch.stack([i_mod_encoder(i_idxs) for i_mod_encoder in self.item_encoders.values()])
+        i_mods_embeds = i_mods_embeds.to(q_embed.device)  # (n_mods, batch_size, d) or # (n_mods, batch_size, n_neg, d)
+
+        # User translation
+        u_trans = q_embed + u_embed  # (batch_size, d)
 
         # Cross Attention
         q = self.w_q(q_text)  # (batch_size, d)
         k = torch.stack([w_k(i_idxs) for w_k in self.w_k.values()])
         k = k.to(q.device)  # (n_mods, batch_size, d) or # (n_mods, batch_size, n_neg, d)
+        v = i_mods_embeds
 
+        # Swapping dimensions for the cross attention according to docs in functional.scale_dot_product_attention
+        # b = batch_size
+        # n = n_neg
+        # m = n_mods
         if i_idxs.dim() == 2:
-            # In case we have n_neg or n_items
-            q = q.unsqueeze(1)  # (batch_size, 1, d)
+            q = rearrange(q, 'b d -> b 1 1 1 d')
+            k = rearrange(k, 'm b n d -> b n 1 m d')
+            v = rearrange(v, 'm b n d -> b n 1 m d')
+        else:
+            q = rearrange(q, 'b d -> b 1 1 d')
+            k = rearrange(k, 'm b d -> b 1 m d')
+            v = rearrange(v, 'm b d -> b 1 m d')
 
-        # Attention weight (looking at the implementation
-        # https://pytorch.org/docs/stable/generated/torch.nn.functional.scaled_dot_product_attention.html)
-        scale_factor = 1 / math.sqrt(self.d)
-        weights = torch.sum(q * k, dim=-1) * scale_factor  # (n_mods, batch_size) or # (n_mods, batch_size, n_neg)
-        weights = torch.softmax(weights, dim=0)
-
-        return weights
-
-    def modality_score(self, q_text: torch.Tensor, u_idxs: torch.Tensor, i_idxs: torch.Tensor):
-
-        # Encode the queries
-        q_embed = self.query_encoder(q_text)  # (batch_size, d)
-
-        # Encode the users
-        u_embed = self.user_encoder(u_idxs)  # (batch_size, d)
-
-        # User translation
-        u_trans = q_embed + u_embed  # (batch_size, d)
-
-        # Encode the items
-        i_mods_embeds = torch.stack([i_mod_encoder(i_idxs) for i_mod_encoder in self.item_encoders.values()])
-        i_mods_embeds = i_mods_embeds.to(q_embed.device)  # (n_mods, batch_size, d) or (n_mods, batch_size, n_neg, d)
+        # (batch_size, n , 1, 1, d) or (batch_size, 1, 1, d)
+        i_embed = F.scaled_dot_product_attention(q, k, v)
+        i_embed = i_embed.squeeze(-2).squeeze(-2)  # (batch_size, n , d) or (batch_size, d)
 
         # Compute similarity
-        if i_idxs.dim() == 2:
+        if len(i_embed.shape) == 3:
             # In case we have n_neg or n_items
             u_trans = u_trans.unsqueeze(1)
 
-        scores = torch.sum(u_trans * i_mods_embeds, dim=-1)  # (n_mods, batch_size) or (n_mods, batch_size, n_neg)
-        return scores
+        preds = torch.sum(u_trans * i_embed, dim=-1)  # (batch_size) or (batch_size, n_neg)
 
-    def predict_weight_and_score(self, q_text: torch.Tensor, u_idxs: torch.Tensor,
-                                 i_idxs: torch.Tensor):
-        """
-        Returns the score of the model for a batch of data in the format weight * score.
-        NB. i_idxs should be a 2D tensor.
-        returns
-            scores: (batch_size, n_mods)
-            weights: (batch_size, n_mods)
-        """
-
-        assert i_idxs.ndim == 2, f"Expected 2D tensor, got {i_idxs.ndim}D"
-
-        # Encode the queries
-        q_embed = self.query_encoder(q_text)  # (batch_size, d)
-
-        # Encode the users
-        u_embed = self.user_encoder(u_idxs)  # (batch_size, d)
-
-        # User translation
-        u_trans = q_embed + u_embed  # (batch_size, d)
-
-        # Encode the items
-        i_mods_embeds = torch.stack([i_mod_encoder(i_idxs) for i_mod_encoder in self.item_encoders.values()])
-        i_mods_embeds = i_mods_embeds.to(q_embed.device)  # (n_mods, batch_size, d)
-
-        # Cross Attention
-        q = self.w_q(q_text)  # (batch_size, d)
-        k = torch.stack([w_k(i_idxs) for w_k in self.w_k.values()])
-        k = k.to(q.device)  # (n_mods, batch_size, d)
-
-        # Attention weight (looking at the implementation
-        # https://pytorch.org/docs/stable/generated/torch.nn.functional.scaled_dot_product_attention.html)
-        scale_factor = 1 / math.sqrt(self.d)
-        weights = torch.sum(q * k, dim=-1) * scale_factor  # (n_mods, batch_size)
-        weights = torch.softmax(weights, dim=0)  # (n_mods, batch_size)
-
-        # Computing per-modality scores
-        scores = torch.sum(u_trans * i_mods_embeds, dim=-1)  # (n_mods, batch_size)
-
-        scores = scores.T
-        weights = weights.T
-
-        return scores, weights
+        return preds
 
     @staticmethod
     def build_from_conf(conf: dict, dataset: Dataset, feature_holder: FeatureHolder):
@@ -478,18 +421,24 @@ class SparseMoEQueryMatching(BaseQueryMatchingModel):
     def forward(self, q_text: torch.Tensor, u_idxs: torch.Tensor,
                 i_idxs: torch.Tensor) -> torch.Tensor:
 
-        mod_weights = self.modality_weight(q_text, i_idxs)
-        mod_scores = self.modality_score(q_text, u_idxs, i_idxs)
+        # Encode the queries
+        q_embed = self.query_encoder(q_text)  # (batch_size, d)
 
-        return torch.sum(mod_weights * mod_scores, dim=0)  # (batch_size) or (batch_size, n_neg)
+        # Encode the users
+        u_embed = self.user_encoder(u_idxs)  # (batch_size, d)
 
-    def modality_weight(self, q_text: torch.Tensor, i_idxs: torch.Tensor):
+        # Encode the items
+        # Here a modality is considered a different expert
+        i_mods_embeds = torch.stack([i_mod_encoder(i_idxs) for i_mod_encoder in self.item_encoders.values()])
+        i_mods_embeds = i_mods_embeds.to(q_embed.device)  # (n_mods, batch_size, d) or # (n_mods, batch_size, n_neg, d)
+
+        # User translation
+        u_trans = q_embed + u_embed  # (batch_size, d)
 
         # Sparse MoE with Noisy Top-K Gating #
 
         # Computing left-side of H(x) in Eq. 4 https://arxiv.org/pdf/1701.06538
         # x is q.T @ k for each modality
-
         q_gate = self.h_q(q_text)  # (batch_size, d)
         k_gate = torch.stack([h_k(i_idxs) for h_k in self.h_k.values()])
         k_gate = k_gate.to(q_gate.device)  # (n_mods, batch_size, d) or # (n_mods, batch_size, n_neg, d)
@@ -501,7 +450,6 @@ class SparseMoEQueryMatching(BaseQueryMatchingModel):
 
         if self.training:
             # Noise is added only during training
-
             # Computing right-side of H(x) in Eq. 4 https://arxiv.org/pdf/1701.06538
             q_noise = self.noise_q(q_text)  # (batch_size, d)
             k_noise = torch.stack([noise_k(i_idxs) for noise_k in self.noise_k.values()])
@@ -515,9 +463,8 @@ class SparseMoEQueryMatching(BaseQueryMatchingModel):
             noise_stddev = F.softplus(noise_activations)  # (n_mods, batch_size) or (n_mods, batch_size, n_neg)
 
             # Putting H(x) together
-
-            h_qk = h_qk + noise_stddev * torch.randn_like(
-                noise_stddev)  # (n_mods, batch_size) or (n_mods, batch_size, n_neg)
+            # (n_mods, batch_size) or (n_mods, batch_size, n_neg)
+            h_qk = h_qk + noise_stddev * torch.randn_like(noise_stddev)
 
         # Applying the top_k activation
         _, topk_idxs = torch.topk(h_qk, self.top_k, dim=0)
@@ -532,33 +479,16 @@ class SparseMoEQueryMatching(BaseQueryMatchingModel):
         # G(x) = Softmax(KeepTopK(H(x), k))
         gates = F.softmax(masked_h_qk, dim=0)  # (n_mods, batch_size) or (n_mods, batch_size, n_neg)
 
-        return gates
-
-    def modality_score(self, q_text: torch.Tensor, u_idxs: torch.Tensor,
-                       i_idxs: torch.Tensor) -> torch.Tensor:
-
-        # Encode the queries
-        q_embed = self.query_encoder(q_text)  # (batch_size, d)
-
-        # Encode the users
-        u_embed = self.user_encoder(u_idxs)  # (batch_size, d)
-
-        # User translation
-        u_trans = q_embed + u_embed  # (batch_size, d)
-
-        # Encode the items
-        # Here a modality is considered a different expert
-        i_mods_embeds = torch.stack([i_mod_encoder(i_idxs) for i_mod_encoder in self.item_encoders.values()])
-        i_mods_embeds = i_mods_embeds.to(q_embed.device)  # (n_mods, batch_size, d) or # (n_mods, batch_size, n_neg, d)
+        gated = torch.sum(gates.unsqueeze(-1) * i_mods_embeds, dim=0)  # (batch_size, d) or (batch_size, n_neg, d)
 
         # Compute similarity
         if i_idxs.dim() == 2:
             # In case we have n_neg or n_items
             u_trans = u_trans.unsqueeze(1)
 
-        scores = torch.sum(u_trans * i_mods_embeds, dim=-1)  # (n_mods, batch_size) or (n_mods, batch_size, n_neg)
+        preds = torch.sum(u_trans * gated, dim=-1)  # (batch_size) or (batch_size, n_neg)
 
-        return scores
+        return preds
 
     @staticmethod
     def build_from_conf(conf: dict, dataset: Dataset, feature_holder: FeatureHolder):
