@@ -1,19 +1,32 @@
 data_path: "./data"
-d: 28
-device: cuda
-eval_batch_size: 256
-train_batch_size: 256
-running_settings:
 
-  train_n_workers: 5
-  eval_n_workers: 5
-  #prefetch_factor: 2
-  batch_verbose: 1
+d: 128
+
+n_epochs: 20
+
+lr: 0.003
+wd: 0.01
+
+top_k: 1
+
+temperature: 0.5
+dropout_p: 0.3
+
+nn_layers: [128, 128]
+
+device: cuda
+eval_batch_size: 1
+train_batch_size: 512
+
+running_settings:
+  train_n_workers: 4
+  eval_n_workers: 2
+  batch_verbose: True
 
 language_model:
   tokenizer_name: "answerdotai/ModernBERT-base"
   model_name: "answerdotai/ModernBERT-base"
   device: cuda
-  max_length: 100
+  max_length: 38
   batch_size: 2000
   hidden_size: 768
