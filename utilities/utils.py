@@ -31,7 +31,7 @@ def reproducible(seed: int):
     torch.backends.cudnn.benchmark = False
 
 
-def fetch_bests_in_sweep(sweep_id, project_base_directory: str = '.'):
+def fetch_bests_in_sweep(sweep_id, project_base_directory: str = '.', pos: int = 0):
     """
     It provides full interaction with wandb to gather the best models in a sweep.
     - It queries wandb for the best hyperparameter configuration in a sweep, aggregating (mean) over the seeds.
@@ -70,12 +70,15 @@ def fetch_bests_in_sweep(sweep_id, project_base_directory: str = '.'):
     # Averaging
     hps2max = {k: np.mean(v) for k, v in hps2max.items()}
 
-    # Finding the key that leads to the maximum value
-    best_hps = max(hps2max, key=hps2max.get)
+    # Sorting and taking the best at position pos
+    sorted_hps = sorted(hps2max.items(), key=lambda item: item[1], reverse=True)
+
+    best_hps = sorted_hps[pos][0]
 
     hps_info = ' - '.join(f'{k} = {v}' for k, v in zip(hps_keys, best_hps))
-    print('Best Hyperparameters: ', hps_info)
-    print('Best Average Value: ', hps2max[best_hps])
+    print(f'---Position {pos} on {len(best_hps)}---')
+    print('Hyperparameters: ', hps_info)
+    print('Average Value: ', hps2max[best_hps])
 
     # Making sure that the runs are all on the same machine
     best_runs = hps2runs[best_hps]
@@ -124,7 +127,7 @@ def print_latex_line(mean_std_results: dict, method_name: str):
 
 
 if __name__ == '__main__':
-    sweep_id = 'karapost/jam/fbt096rt'
+    sweep_id = '<SWEEP_ID>'
     best_configs, best_hps = fetch_bests_in_sweep(sweep_id)
     print('Best Hyperparameters: ', best_hps)
     print('Best Configs: ', best_configs)
