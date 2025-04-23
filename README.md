@@ -127,6 +127,87 @@ Add your dataset to `DatasetsEnum` in `constants/enums.py`.
 
 NB. Codebase will look for the data in `os.path.join(conf['data_path'],<dataset_name>,'processed')`
 
+## Dataset
+
+Data | Unique # of samples | Field in Dataset | Information 
+ --- |---------------------|------------------|-------------|
+Query ID | 112,337             | query_idx        |                                        |
+Query | 112,337             | text             |
+User ID | 103,752             | user_idx         | 
+Playlist | 3,978               | item_idxs        | ISRC code of each item in the playlist 
+
+### Statistics
+
+The dataset provides information of 3,978 playlists consisting of 99,865 unique items matched with 112,337 unique queries of 103,752 users.
+
+### Retrieving Metadata of Songs
+
+With the ISRC it is possible to fetch metadata (song title and artist name) of each music track:
+
+```
+# Imports
+from bs4 import BeautifulSoup
+from urllib.request import Request, urlopen
+import re
+
+
+def get_metadata(id_isrc: str):
+    # Construct url to retrieve metadata.
+    url = f"https://musicbrainz.org/isrc/{id_isrc}"
+    
+    # Get html page.
+    req = Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+    html_page = urlopen(req).read()
+    soup = BeautifulSoup(html_page, 'html.parser')
+    
+    # Get data
+    song_title = "Undefined"
+    artist_name = "Undefined"
+    
+    try:
+        entry = soup.find_all(class_="odd")[0]
+        fields = entry.find_all(['td', 'th'])
+        data = [cell.get_text(strip=True) for cell in fields]
+        song_title = data[0]
+        artist_name = data[1]
+    except:
+        print("Error while retrieving data")
+     
+    return song_title, artist_name
+
+```
+
+### User Study for Generated Queries
+
+- We also performed a user survey to assess the quality of  300 generated user long queries in a Likert-5 scale (1:Strongly Dissagree, 2:Disagree, 3:Neutral, 4:Agree, 5:Strongly Agree). Each query was evaluated by 2 distinct survey participants.
+    ![](assets/dist_ans.png)
+    | Results        |              |
+    |---------------|-------:|
+    | Unique Participants | 15
+    | Total Labels | 600 |
+    | Numeric Label (mean / std / median)| 3.54 /  1.17 / 4.0 |
+  
+-  The mean label value **3.54** indicates a positive perception of the quality of the generated queries.     
+
+- In order to assess the paired agreement of the labels, we performed an statistical significance test between the two groups of labels, namely, a t-test was performed assuming independant (`ttest_ind`) and related (`ttest_rel`) samples.
+    |**Test Results**      |`ttest_ind`|`ttest_rel`|
+    |-------|:---------:|:---------:|
+    |*p-value*| 0.5095|0.3362 |
+    |*statistic*|0.6599  |0.9832 |
+- With the resulting p-values we are not able to reject the null hypotesis, therefore, the two label groups hold similar distributions.  
+<!-- {'total_labels': 600,
+ 'summary_answers': {'Strongly Disagree': 34,
+                     'Disagree': 108,
+                     'Neutral': 84,
+                     'Agree': 245,
+                     'Strongly Agree': 129},
+ 'numeric_score': {'min': 1,
+                   'max': 5,
+                   'mean': '3.54',
+                   'std': '1.17',
+                   'median': '4.0'}} -->
+
+
 ## Cite
 
 
