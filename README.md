@@ -185,7 +185,7 @@ def get_metadata(id_isrc: str):
     |---------------|-------:|
     | Unique Participants | 15
     | Total Labels | 600 |
-    | Numeric Label (mean / std / median)| 3.54 / 4.0 / 1.17 |
+    | Numeric Label (mean / std / median)| 3.54 /  1.17 / 4.0 |
   
 -  The mean label value **3.54** indicates a positive perception of the quality of the generated queries.     
 
