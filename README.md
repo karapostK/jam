@@ -1,5 +1,5 @@
-# :jar: JAM - Just Ask for Music  
-### Natural Language-based Recommendations for Pre-trained Multimodal Item Recommendations
+# :jar: :cherries: JAM - Just Ask for Music  
+### Multimodal and Personalized Natural Language Music Recommendation
 
 
 <div align="center">
@@ -26,9 +26,9 @@
 
 ### Logging
 
-- JAM uses [W&B](https://wandb.ai/site) for logging. If you plan to log things, you should create an account there first
+- JAM uses [W&B](https://wandb.ai/site) for logging. You should create an account there first
 - Modify the `constants/wandb_constants.py` file with your `entity_name` and `project_name`
-- First time usage you might want call `wandb login`.
+- First time usage you might want call `wandb login` from the shell.
 
 
 ## Usage
@@ -57,7 +57,7 @@ A single experiments can be 1) `train/val` + `test` 2) `train/val` 3) just `test
 Example:
 `test_conf.yml`
 ```yml
-data_path: "/home/PycharmProjects/jam/data"
+data_path: "./data"
 d: 28 # for avgmatching model
 device: cuda
 
@@ -68,7 +68,7 @@ train_batch_size: 256
 running_settings:
   train_n_workers: 4
   eval_n_workers: 4
-  batch_verbose: 1
+  batch_verbose: True
 ```
 then run
 `python run_experiment.py -a basematching -d amazon23office -c conf/confs/test_conf.yml`
@@ -88,7 +88,7 @@ To run multiple experiments, JAM relies on W&B sweeps. This is to execute differ
 NB. You can adjust how many gpus are visible to the agent by specifying `CUDA_VISIBLE_DEVICES=... wandb agent..`
 
 #### Multiple Runs on a Server
-When you activated a sweep, and you don't want to start each single agent, you can use `run_agents.py`. Originally from my cool colleague [Christian](https://github.com/Tigxy/SiBraR---Single-Branch-Recommender/blob/main/run_agent.py)
+After activating a sweep, you can use `run_agents.py` to launch multiple agents simultaneously.
 
 When running `run_agent.py` you need to specify:
 - `sweep_id`. This value should be in the format `<entity_name>/<project_name>/<sweep_id>`
@@ -104,10 +104,12 @@ When running `run_agent.py` you need to specify:
 ├── data                        <- Data classes, Raw and Processed Datasets
 ├── evaluation                  <- Metrics and Evaluation Procedure
 ├── train                       <- Trainer class
-├── utilities                   <- Utilities of mild to low importance
+├── utilities                   <- Utilities from mild to low importance
 ├── (saved_models)              <- Automatically created (if def. conf is not altered)
 ├── experiment_helper.py        <- Executes the main functionalities of the code.
-└── run_experiment.py           <- Entry point to the code
+├── sweep_agent.py              <- Same as experiment_helper but for train_val and when launching sweeps.
+├── run_test_sweep.py           <- Same as experiment_helper but for test results over a sweep.
+└── run_experiment.py           <- Entry point to the code.
 ```
 ### Add Algorithms
 Take a look at the `BaseQueryMatchingModel`in `algorithms/base` on what functionalities are expected from a new algorithm.
@@ -121,13 +123,13 @@ Choose a name, short and lowercase letters to denote the dataset `<dataset_name>
 
 The expected format of the files are in the first lines in `data/datasets.py` (for the user-query-item matching) and `data/feature.py` (for pre-trained user/item features).
 
-If you can provide the files in the above format, you can add them to ``data/<dataset_name>/processed`
+If you can provide the files in the above format, you can add them to ``data/<dataset_name>/processed``
 
 Add your dataset to `DatasetsEnum` in `constants/enums.py`.
 
 NB. Codebase will look for the data in `os.path.join(conf['data_path'],<dataset_name>,'processed')`
 
-## Dataset
+# JAMSessions Dataset
 
 Data | Unique # of samples | Field in Dataset | Information 
  --- |---------------------|------------------|-------------|
@@ -177,7 +179,7 @@ def get_metadata(id_isrc: str):
 
 ```
 
-### User Study for Generated Queries
+# User Study for Generated Queries
 
 - We also performed a user survey to assess the quality of  300 generated user long queries in a Likert-5 scale (1:Strongly Dissagree, 2:Disagree, 3:Neutral, 4:Agree, 5:Strongly Agree). Each query was evaluated by 2 distinct survey participants.
     ![](assets/dist_ans.png)
