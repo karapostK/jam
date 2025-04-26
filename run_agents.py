@@ -8,7 +8,6 @@ from datetime import datetime
 
 _print = print
 
-# From my cool colleague Christian https://github.com/Tigxy/SiBraR---Single-Branch-Recommender/blob/main/run_agent.py
 
 # monkey patch print statement to show timestamps
 def print(*args, **kwargs):

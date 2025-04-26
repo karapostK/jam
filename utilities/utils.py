@@ -76,7 +76,7 @@ def fetch_bests_in_sweep(sweep_id, project_base_directory: str = '.', pos: int =
     best_hps = sorted_hps[pos][0]
 
     hps_info = ' - '.join(f'{k} = {v}' for k, v in zip(hps_keys, best_hps))
-    print(f'---Position {pos} on {len(best_hps)}---')
+    print(f'---Position {pos} ---')
     print('Hyperparameters: ', hps_info)
     print('Average Value: ', hps2max[best_hps])
 
