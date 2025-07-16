@@ -212,8 +212,23 @@ def get_metadata(id_isrc: str):
 
 ## Cite
 
+If you use this work, please cite our RecSys 2025 paper:
+
+```bibtex
+@inproceedings{melchiorre2025jam,
+  title     = {Just Ask for Music (JAM): Multimodal and Personalized Natural Language Music Recommendation},
+  author    = {Alessandro B. Melchiorre and Elena V. Epure and Shahed Masoudian and Gustavo Escobedo and Anna Hausberger and Manuel Moussallam and Markus Schedl},
+  booktitle = {Proceedings of the 19th ACM Conference on Recommender Systems (RecSys)},
+  year      = {2025},
+  address   = {Prague, Czhech Republic},
+  note      = {Short Paper},
+  publisher = {ACM},
+}
+```
 
 ## License
+
+
 
 
 
