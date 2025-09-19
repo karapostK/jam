@@ -228,7 +228,7 @@ If you use this work, please cite our RecSys 2025 paper:
 
 ## License
 
-The code in this repository is licensed under the MIT License. For details, please see the LICENSE file.
+The code in this repository is licensed under the MIT License. For details, please see the [LICENSE](./LICENSE) file.
 
 
 
