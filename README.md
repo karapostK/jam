@@ -131,6 +131,8 @@ NB. Codebase will look for the data in `os.path.join(conf['data_path'],<dataset_
 
 # JAMSessions Dataset
 
+-> [Link to the Dataset on Zenodo](https://zenodo.org/records/15968495) <-
+
 Data | Unique # of samples | Field in Dataset | Information 
  --- |---------------------|------------------|-------------|
 Query ID | 112,337             | query_idx        |                                        |
